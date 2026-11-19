@@ -1,0 +1,281 @@
+@import "tailwindcss";
+
+:root {
+  --aumi-font-primary: "DM Sans", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --aumi-font-display: "DM Sans", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  --aumi-font-editorial: "DM Sans", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  --aumi-font-scale: 1;
+  --aumi-letter-spacing: -0.02em;
+
+  --aumi-accent-purple: #7A689C;
+  --aumi-accent-pink: #EC2B82;
+  --aumi-accent-blush: #EC97B7;
+  --aumi-accent-lilac: #BC9FE6;
+  --aumi-accent-orange: #E1754C;
+  --aumi-accent-ecru: #FCF6EC;
+  --aumi-accent-neon: #C8C978;
+  --aumi-ink: #232122;
+  --aumi-plum: #2F1534;
+  --aumi-glass-blur: 22px;
+}
+
+@theme {
+  --font-sans: var(--aumi-font-primary);
+  --font-serif-editorial: var(--aumi-font-editorial);
+  --font-display-tight: var(--aumi-font-display);
+
+  --color-aumi-black: #232122;
+  --color-aumi-plum: #2F1534;
+  --color-aumi-ivory: #FCF6EC;
+  --color-aumi-pink: #EC2B82;
+  --color-aumi-blush: #EC97B7;
+  --color-aumi-lilac: #BC9FE6;
+  --color-aumi-violet: #7A689C;
+  --color-aumi-orange: #E1754C;
+  --color-aumi-olive: #DAD994;
+  --color-aumi-lime: #C8C978;
+}
+
+@layer base {
+  html {
+    font-family: var(--aumi-font-primary);
+    font-size: calc(16px * var(--aumi-font-scale));
+    letter-spacing: var(--aumi-letter-spacing);
+    color: var(--aumi-ink);
+    background-color: #F6F0FA;
+  }
+
+  body {
+    font-family: var(--aumi-font-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  button,
+  a,
+  [role="button"] {
+    cursor: pointer;
+  }
+}
+
+.font-editorial {
+  font-family: var(--aumi-font-editorial);
+  font-weight: 700;
+  letter-spacing: -0.028em;
+}
+
+.font-milligram {
+  font-family: var(--aumi-font-display);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Aumi Studio Ambient Desktop Wallpapers (layered purple, blush, lilac, ecru — never plain flat gray/white) */
+.aumi-wallpaper {
+  background-color: #F5EFF9;
+  background-image:
+    radial-gradient(at 8% 12%, rgba(188, 159, 230, 0.45) 0px, transparent 52%),
+    radial-gradient(at 86% 10%, rgba(236, 151, 183, 0.40) 0px, transparent 48%),
+    radial-gradient(at 52% 48%, rgba(252, 246, 236, 0.92) 0px, transparent 62%),
+    radial-gradient(at 15% 88%, rgba(122, 104, 156, 0.25) 0px, transparent 50%),
+    radial-gradient(at 92% 85%, rgba(225, 117, 76, 0.16) 0px, transparent 48%);
+}
+
+html[data-aumi-wallpaper="blush_silk"] .aumi-wallpaper {
+  background-color: #FDF3F7;
+  background-image:
+    radial-gradient(at 12% 10%, rgba(236, 151, 183, 0.46) 0px, transparent 50%),
+    radial-gradient(at 88% 16%, rgba(188, 159, 230, 0.35) 0px, transparent 50%),
+    radial-gradient(at 50% 60%, rgba(252, 246, 236, 0.88) 0px, transparent 60%),
+    radial-gradient(at 80% 88%, rgba(236, 43, 130, 0.12) 0px, transparent 48%);
+}
+
+html[data-aumi-wallpaper="ecru_warm"] .aumi-wallpaper {
+  background-color: #FCF6EC;
+  background-image:
+    radial-gradient(at 14% 16%, rgba(225, 117, 76, 0.22) 0px, transparent 50%),
+    radial-gradient(at 85% 15%, rgba(188, 159, 230, 0.32) 0px, transparent 52%),
+    radial-gradient(at 45% 85%, rgba(236, 151, 183, 0.28) 0px, transparent 54%);
+}
+
+/* Liquid Glass Surfaces */
+.aumi-glass {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.68) 0%, rgba(249, 244, 253, 0.52) 100%);
+  backdrop-filter: blur(var(--aumi-glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--aumi-glass-blur)) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 10px 30px -10px rgba(47, 21, 52, 0.12);
+}
+
+.aumi-glass-strong {
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.84) 0%, rgba(252, 247, 254, 0.72) 100%);
+  backdrop-filter: blur(calc(var(--aumi-glass-blur) + 6px)) saturate(175%);
+  -webkit-backdrop-filter: blur(calc(var(--aumi-glass-blur) + 6px)) saturate(175%);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.92),
+    0 18px 46px -14px rgba(47, 21, 52, 0.16);
+}
+
+.aumi-menubar-glass {
+  background: linear-gradient(90deg, rgba(252, 247, 254, 0.78) 0%, rgba(255, 255, 255, 0.72) 50%, rgba(253, 242, 246, 0.78) 100%);
+  backdrop-filter: blur(26px) saturate(180%);
+  -webkit-backdrop-filter: blur(26px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.65);
+  box-shadow: inset 0 -1px 0 rgba(47, 21, 52, 0.06);
+}
+
+.aumi-dock-glass {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.74) 0%, rgba(246, 238, 252, 0.62) 100%);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(122, 104, 156, 0.14),
+    0 20px 44px -10px rgba(47, 21, 52, 0.22);
+}
+
+.aumi-mac-window {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    0 28px 70px -18px rgba(47, 21, 52, 0.28),
+    0 4px 16px -4px rgba(47, 21, 52, 0.08);
+}
+
+/* Solid readable form & content card inside glass shells */
+.aumi-surface-solid {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(47, 21, 52, 0.08);
+  box-shadow: 0 2px 12px -4px rgba(47, 21, 52, 0.06);
+}
+
+/* Apple macOS Finder / Liquid Glass Window System */
+.aumi-finder-window {
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.86) 0%, rgba(251, 245, 254, 0.78) 52%, rgba(253, 243, 248, 0.82) 100%);
+  backdrop-filter: blur(32px) saturate(185%);
+  -webkit-backdrop-filter: blur(32px) saturate(185%);
+  border: 1px solid rgba(255, 255, 255, 0.88);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.96),
+    inset 0 0 0 1px rgba(188, 159, 230, 0.16),
+    0 30px 72px -18px rgba(47, 21, 52, 0.24),
+    0 8px 24px -8px rgba(236, 43, 130, 0.08);
+}
+
+.aumi-finder-chrome {
+  background: linear-gradient(90deg, rgba(246, 236, 252, 0.88) 0%, rgba(253, 244, 249, 0.86) 50%, rgba(252, 246, 236, 0.86) 100%);
+  backdrop-filter: blur(26px) saturate(180%);
+  -webkit-backdrop-filter: blur(26px) saturate(180%);
+  border-bottom: 1px solid rgba(122, 104, 156, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.aumi-finder-sidebar {
+  background: linear-gradient(180deg, rgba(247, 240, 253, 0.78) 0%, rgba(253, 243, 248, 0.72) 55%, rgba(252, 246, 236, 0.72) 100%);
+  backdrop-filter: blur(24px) saturate(170%);
+  -webkit-backdrop-filter: blur(24px) saturate(170%);
+}
+
+.aumi-finder-tab-active {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(252, 248, 255, 0.94) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    0 6px 18px -6px rgba(47, 21, 52, 0.16),
+    0 1px 3px rgba(236, 43, 130, 0.08);
+}
+
+.aumi-liquid-control {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.76) 0%, rgba(252, 244, 250, 0.56) 100%);
+  backdrop-filter: blur(18px) saturate(175%);
+  -webkit-backdrop-filter: blur(18px) saturate(175%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow:
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.95),
+    inset 0 -1px 1px rgba(122, 104, 156, 0.1),
+    0 8px 20px -8px rgba(47, 21, 52, 0.15);
+}
+
+.aumi-liquid-pink-pill {
+  background: linear-gradient(135deg, rgba(236, 43, 130, 0.92) 0%, rgba(236, 151, 183, 0.92) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.55),
+    0 12px 26px -10px rgba(236, 43, 130, 0.48);
+}
+
+.aumi-login-backdrop {
+  background-color: #EFE5F7;
+  background-image:
+    radial-gradient(at 10% 12%, rgba(236, 151, 183, 0.58) 0px, transparent 48%),
+    radial-gradient(at 88% 10%, rgba(188, 159, 230, 0.62) 0px, transparent 50%),
+    radial-gradient(at 52% 48%, rgba(252, 246, 236, 0.9) 0px, transparent 60%),
+    radial-gradient(at 14% 88%, rgba(122, 104, 156, 0.36) 0px, transparent 50%),
+    radial-gradient(at 86% 86%, rgba(225, 117, 76, 0.28) 0px, transparent 48%),
+    radial-gradient(at 64% 80%, rgba(218, 217, 148, 0.32) 0px, transparent 42%);
+}
+
+/* Rich text rendering for Copy bodies */
+.aumi-copy-prose h1 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #2F1534;
+  margin-bottom: 0.5rem;
+}
+.aumi-copy-prose h2 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #2F1534;
+  margin-bottom: 0.4rem;
+}
+.aumi-copy-prose ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+  margin: 0.35rem 0;
+}
+.aumi-copy-prose ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+  margin: 0.35rem 0;
+}
+.aumi-copy-prose a {
+  color: #EC2B82;
+  text-decoration: underline;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(47, 21, 52, 0.16);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(47, 21, 52, 0.30);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Aumi Studio",
+  "description": "Sistema completo de gestão criativa do Aumi Studio: Portal do Cliente, Serviços, Financeiro, Sociedade e Operações.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,1547 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aumi Studio — Portal do Cliente (Estilo macOS)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+          },
+          colors: {
+            aumi: {
+              pink: '#F46AA3',
+              magenta: '#E94E8A',
+              soft: '#FDF2F7',
+              wine: '#3B0918',
+              bg: '#F6F6F8',
+            }
+          },
+          boxShadow: {
+            'macos': '0 24px 60px -12px rgba(59, 9, 24, 0.14), 0 0 1px 1px rgba(0, 0, 0, 0.06)',
+            'card': '0 2px 10px rgba(0, 0, 0, 0.03), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #FCE7F3 0%, #F5F3FF 48%, #FCE7F3 100%);
+      color: #1D1D1F;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Scrollbar sutil estilo macOS */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.12);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 0, 0, 0.22);
+    }
+
+    /* Efeito de aba moderna estilo Arc / Safari */
+    .browser-tab-active {
+      background: #FFFFFF;
+      box-shadow: 0 2px 8px rgba(59, 9, 24, 0.06);
+      position: relative;
+    }
+
+    /* Animação suave de entrada */
+    @keyframes fadeSlide {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .animate-view {
+      animation: fadeSlide 0.22s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="min-h-screen p-2 sm:p-4 md:p-6 flex items-center justify-center selection:bg-pink-200 selection:text-[#3B0918]">
+
+  <!-- Janela Principal estilo macOS -->
+  <div id="macos-window" class="w-full max-w-[1440px] h-[92vh] min-h-[680px] bg-[#F6F6F8] rounded-[20px] shadow-macos flex flex-col overflow-hidden border border-white/80">
+
+    <!-- 1. TOP BAR: Controles macOS + Abas Estilo Navegador Moderno (Ref. 4ª imagem) -->
+    <header class="bg-[#EFEBF0]/90 backdrop-blur-md border-b border-black/[0.06] select-none shrink-0">
+      <!-- Linha das Abas -->
+      <div class="flex items-center px-4 pt-2.5 pb-1.5 gap-3 overflow-x-auto">
+        <!-- Botões Semáforo macOS -->
+        <div class="flex items-center gap-2 mr-2 shrink-0">
+          <button onclick="showToast('Janela minimizada para o Dock')" title="Fechar" class="w-3 h-3 rounded-full bg-[#FF5F56] border border-black/10 hover:brightness-90 transition"></button>
+          <button onclick="showToast('Janela minimizada')" title="Minimizar" class="w-3 h-3 rounded-full bg-[#FFBD2E] border border-black/10 hover:brightness-90 transition"></button>
+          <button onclick="toggleFullscreen()" title="Expandir" class="w-3 h-3 rounded-full bg-[#27C93F] border border-black/10 hover:brightness-90 transition"></button>
+        </div>
+
+        <!-- Botão Dropdown de Espaços (Inspirado no canto superior esquerdo da 4ª imagem) -->
+        <button onclick="showToast('Espaço de trabalho: Clientes de Ingrid')" class="w-8 h-8 rounded-xl bg-white/70 hover:bg-white border border-black/[0.06] flex items-center justify-center text-[#1D1D1F] transition shrink-0 shadow-xs">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        <!-- Lista de Abas de Projetos -->
+        <div id="browser-tabs" class="flex items-center gap-1.5 flex-1 min-w-0">
+          <!-- Renderizado via JS -->
+        </div>
+
+        <!-- Botão Nova Aba -->
+        <button onclick="addNewProjectTab()" title="Abrir outro projeto" class="w-8 h-8 rounded-xl hover:bg-black/5 flex items-center justify-center text-gray-600 transition shrink-0">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+        </button>
+
+        <!-- Status Online & Perfil -->
+        <div class="hidden lg:flex items-center gap-3 ml-auto pl-3 shrink-0 text-xs text-gray-500">
+          <span class="flex items-center gap-1.5 bg-white/70 px-2.5 py-1 rounded-full border border-black/5">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            1/2 online
+          </span>
+          <span id="clock-display" class="font-medium text-gray-600">qui, 19 de nov, 11:26</span>
+          <div class="flex items-center gap-1.5 bg-white/80 pl-1.5 pr-2.5 py-1 rounded-full border border-black/5">
+            <span class="w-5 h-5 rounded-full bg-[#3B0918] text-pink-200 text-[10px] font-bold flex items-center justify-center">IN</span>
+            <span class="font-medium text-gray-800">Ingrid</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. TOOLBAR DE NAVEGAÇÃO & BREADCRUMB (Ref. 3ª e 4ª imagens) -->
+      <div class="bg-white px-4 py-2 flex flex-wrap items-center justify-between gap-3 border-t border-black/[0.04]">
+        <div class="flex items-center gap-2 min-w-0">
+          <!-- Mobile Sidebar Toggle -->
+          <button onclick="toggleMobileSidebar()" class="md:hidden p-1.5 rounded-lg hover:bg-gray-100 text-gray-700">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+
+          <!-- Setas Voltar / Avançar / Atualizar (Ref. 4ª imagem) -->
+          <div class="flex items-center gap-1 mr-1">
+            <button onclick="navigateHistory(-1)" class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-800 transition" title="Voltar">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+            </button>
+            <button onclick="navigateHistory(1)" class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition" title="Avançar">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </button>
+            <button onclick="refreshCurrentView()" class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-700 transition" title="Atualizar">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Breadcrumb estilo Finder -->
+          <nav class="flex items-center gap-1.5 text-xs sm:text-sm text-gray-500 truncate bg-[#F6F6F8] px-3 py-1.5 rounded-xl border border-black/[0.05]">
+            <span class="font-semibold text-[#3B0918] flex items-center gap-1">
+              <span class="w-2 h-2 rounded-full bg-[#F46AA3]"></span>
+              Aumi Studio
+            </span>
+            <span class="text-gray-300">/</span>
+            <span class="hidden sm:inline hover:text-gray-800 cursor-pointer" onclick="switchSection('visao-geral')">Portal do Cliente</span>
+            <span class="hidden sm:inline text-gray-300">/</span>
+            <span class="hidden md:inline hover:text-gray-800 cursor-pointer">Clientes de Ingrid</span>
+            <span class="hidden md:inline text-gray-300">/</span>
+            <span id="breadcrumb-project" class="font-semibold text-gray-900 truncate">trete (dfdsfd)</span>
+          </nav>
+        </div>
+
+        <!-- Ações Direitas da Toolbar -->
+        <div class="flex items-center gap-2">
+          <!-- Busca Rápida -->
+          <div class="relative hidden sm:block">
+            <svg class="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              id="global-search"
+              type="text"
+              oninput="handleSearch(this.value)"
+              placeholder="Buscar no projeto..."
+              class="w-44 lg:w-56 pl-8 pr-10 py-1.5 text-xs bg-[#F6F6F8] hover:bg-gray-100 focus:bg-white rounded-xl border border-black/[0.06] focus:border-[#F46AA3] focus:outline-none transition"
+            />
+            <kbd class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-medium text-gray-400 bg-white px-1.5 py-0.5 rounded border border-gray-200">⌘K</kbd>
+          </div>
+
+          <!-- Etiquetas -->
+          <button onclick="showToast('Etiquetas: Identidade Visual • Prioridade Alta')" class="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-gray-700 bg-[#F6F6F8] hover:bg-gray-100 border border-black/[0.05] transition">
+            <svg class="w-3.5 h-3.5 text-[#E94E8A]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+            </svg>
+            Etiquetas
+          </button>
+
+          <!-- Toggle Visão do Cliente vs Visão Interna -->
+          <button id="view-mode-btn" onclick="toggleClientView()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#FDF2F7] text-[#E94E8A] border border-pink-200/80 hover:bg-pink-100/70 transition">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            <span id="view-mode-label">Visão do Cliente</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- CORPO DA JANELA: Sidebar Estilo macOS Finder + Área Principal -->
+    <div class="flex flex-1 min-h-0 relative">
+
+      <!-- SIDEBAR ESQUERDA (Ref. 2ª e 3ª imagens) -->
+      <aside id="sidebar" class="w-64 bg-[#F2F2F5]/95 backdrop-blur-xl border-r border-black/[0.06] flex flex-col justify-between p-3 shrink-0 z-20 transition-transform duration-200 absolute md:static inset-y-0 left-0 -translate-x-full md:translate-x-0">
+        
+        <div class="space-y-4 overflow-y-auto pr-0.5">
+          <!-- Cartão da Pasta do Projeto Ativo (Ícone Pasta Rosa Translúcida 3D - Ref. 2ª imagem) -->
+          <div class="bg-white rounded-2xl p-3 shadow-card border border-black/[0.04] flex items-center gap-3">
+            <!-- SVG Customizado da Pasta Rosa Translúcida 3D -->
+            <div class="w-12 h-12 shrink-0 flex items-center justify-center">
+              <svg viewBox="0 0 64 56" class="w-12 h-12 drop-shadow-sm">
+                <defs>
+                  <linearGradient id="folderBack" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#FF8EC2" />
+                    <stop offset="100%" stop-color="#E94E8A" />
+                  </linearGradient>
+                  <linearGradient id="folderFront" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stop-color="#FFB3D6" stop-opacity="0.88" />
+                    <stop offset="55%" stop-color="#F46AA3" stop-opacity="0.82" />
+                    <stop offset="100%" stop-color="#DB3B7A" stop-opacity="0.92" />
+                  </linearGradient>
+                </defs>
+                <!-- Aba traseira -->
+                <path d="M6 10C6 6.686 8.686 4 12 4H25C27.2 4 29.1 5.1 30.2 6.8L32 9.5H52C55.314 9.5 58 12.186 58 15.5V44C58 47.314 55.314 50 52 50H12C8.686 50 6 47.314 6 44V10Z" fill="url(#folderBack)" />
+                <!-- Folhas de documento internas -->
+                <rect x="13" y="11" width="26" height="24" rx="3" transform="rotate(-6 13 11)" fill="#FFFFFF" />
+                <rect x="17" y="13" width="16" height="2.5" rx="1.2" transform="rotate(-6 17 13)" fill="#F3C6D8" />
+                <rect x="24" y="12" width="24" height="24" rx="3" fill="#FAFAFC" />
+                <rect x="28" y="16" width="14" height="2.5" rx="1.2" fill="#E5C1D0" />
+                <!-- Frente translúcida estilo vidro rosa -->
+                <path d="M4 20C4 16.686 6.686 14 10 14H26.5C28.4 14 30.2 14.9 31.3 16.4L33.2 19H54C57.314 19 60 21.686 60 25V45C60 48.866 56.866 52 53 52H11C7.134 52 4 48.866 4 45V20Z" fill="url(#folderFront)" stroke="#FFFFFF" stroke-opacity="0.65" stroke-width="1" />
+              </svg>
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-1.5">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-[#E94E8A] bg-pink-50 px-1.5 py-0.5 rounded">Pasta Ativa</span>
+              </div>
+              <h2 id="sidebar-project-name" class="font-bold text-sm text-gray-900 truncate mt-0.5">Projeto: trete</h2>
+              <p id="sidebar-project-sub" class="text-[11px] text-gray-500 truncate">Etapa: Briefing • 0%</p>
+            </div>
+          </div>
+
+          <!-- Navegação Principal do Projeto (Estilo macOS Settings Sidebar) -->
+          <div>
+            <p class="px-2.5 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Organização do Projeto</p>
+            <nav id="sidebar-nav" class="space-y-0.5">
+              <!-- Itens renderizados via JS -->
+            </nav>
+          </div>
+
+          <!-- Acesso Rápido às Pastas do Projeto (Estilo Finder Favoritos) -->
+          <div>
+            <p class="px-2.5 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400">Pastas Rápidas</p>
+            <div class="space-y-0.5">
+              <button onclick="openFolderDirect('briefing')" class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-medium text-gray-700 hover:bg-black/[0.04] transition">
+                <span class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-sm bg-[#F46AA3]"></span>
+                  Briefing
+                </span>
+                <span class="text-[10px] text-gray-400">2 arqs</span>
+              </button>
+              <button onclick="openFolderDirect('contrato')" class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-medium text-gray-700 hover:bg-black/[0.04] transition">
+                <span class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-sm bg-[#3B0918]"></span>
+                  Contrato e Proposta
+                </span>
+                <span class="text-[10px] text-gray-400">1 arq</span>
+              </button>
+              <button onclick="openFolderDirect('drive')" class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-medium text-gray-700 hover:bg-black/[0.04] transition">
+                <span class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-sm bg-sky-400"></span>
+                  Google Drive
+                </span>
+                <span class="text-[10px] text-gray-400">Sync</span>
+              </button>
+              <button onclick="openFolderDirect('anexos')" class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-medium text-gray-700 hover:bg-black/[0.04] transition">
+                <span class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-sm bg-amber-400"></span>
+                  Anexos
+                </span>
+                <span id="sidebar-anexos-count" class="text-[10px] text-gray-400">1 arq</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Rodapé da Sidebar: Dock Miniatura do Aumi Studio (Reorganizando a barra inferior da 1ª imagem) -->
+        <div class="pt-3 border-t border-black/[0.06]">
+          <p class="px-2 mb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Módulos Aumi Studio</p>
+          <div class="grid grid-cols-6 gap-1 bg-white/80 p-1.5 rounded-2xl border border-black/[0.05] shadow-xs">
+            <button onclick="showToast('Módulo: Início')" title="Início" class="flex flex-col items-center justify-center p-1.5 rounded-xl hover:bg-gray-100 text-gray-600 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+            </button>
+            <button onclick="showToast('Módulo Ativo: Portal do Cliente')" title="Portal (Ativo)" class="flex flex-col items-center justify-center p-1.5 rounded-xl bg-[#FDF2F7] text-[#E94E8A] ring-1 ring-pink-200 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+            </button>
+            <button onclick="showToast('Módulo: Serviços')" title="Serviços" class="flex flex-col items-center justify-center p-1.5 rounded-xl hover:bg-gray-100 text-indigo-500 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+            </button>
+            <button onclick="showToast('Módulo: Clientes')" title="Clientes" class="flex flex-col items-center justify-center p-1.5 rounded-xl hover:bg-gray-100 text-rose-500 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            </button>
+            <button onclick="showToast('Módulo: Financeiro')" title="Financeiro" class="flex flex-col items-center justify-center p-1.5 rounded-xl hover:bg-gray-100 text-emerald-600 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </button>
+            <button onclick="showToast('Módulo: Ajustes')" title="Ajustes" class="flex flex-col items-center justify-center p-1.5 rounded-xl hover:bg-gray-100 text-slate-600 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- ÁREA DE CONTEÚDO PRINCIPAL -->
+      <main id="main-content" class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-[#F6F6F8]">
+        <!-- Conteúdo dinâmico renderizado via JavaScript -->
+      </main>
+
+    </div>
+  </div>
+
+  <!-- Input oculto para Upload real de imagens na Aprovação de Artes -->
+  <input type="file" id="art-file-input" accept="image/*" multiple class="hidden" onchange="handleArtFileUpload(event)" />
+
+  <!-- Modal / Drawer de Visualização de Arquivo ou Pasta -->
+  <div id="preview-modal" class="fixed inset-0 bg-black/25 backdrop-blur-xs hidden items-center justify-center p-4 z-50" onclick="closeModal(event)">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-black/5 animate-view" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between pb-3 border-b border-gray-100">
+        <div class="flex items-center gap-2.5">
+          <span class="w-3 h-3 rounded-full bg-[#F46AA3]"></span>
+          <h3 id="modal-title" class="font-bold text-gray-900 text-base">Detalhes</h3>
+        </div>
+        <button onclick="closeModal()" class="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div id="modal-body" class="py-4 text-sm text-gray-600 space-y-3">
+        <!-- Conteúdo dinâmico -->
+      </div>
+      <div class="pt-3 border-t border-gray-100 flex justify-end gap-2">
+        <button onclick="closeModal()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 transition">Fechar</button>
+        <button id="modal-primary-btn" onclick="closeModal(); showToast('Ação concluída com sucesso!')" class="px-4 py-2 rounded-xl text-xs font-semibold bg-[#3B0918] hover:bg-[#520d22] text-white transition">Abrir Documento</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notificação estilo macOS Banner Toast -->
+  <div id="macos-toast" class="fixed bottom-5 right-5 bg-white/95 backdrop-blur-md border border-black/10 shadow-xl rounded-2xl px-4 py-3 flex items-center gap-3 transform translate-y-24 opacity-0 transition-all duration-300 z-50 max-w-sm">
+    <div class="w-8 h-8 rounded-xl bg-[#FDF2F7] text-[#E94E8A] flex items-center justify-center shrink-0">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+      </svg>
+    </div>
+    <p id="toast-message" class="text-xs font-medium text-gray-800">Atualizado</p>
+  </div>
+
+  <script>
+    // =========================================================================
+    // DADOS ESTRUTURADOS DO PROJETO (Extraídos e organizados da 1ª imagem)
+    // =========================================================================
+    const state = {
+      activeTabId: 'trete',
+      activeSection: 'visao-geral',
+      activeFolderId: null,
+      clientViewMode: true,
+      searchQuery: '',
+      history: ['visao-geral'],
+      historyIndex: 0,
+      projects: [
+        {
+          id: 'trete',
+          name: 'trete',
+          code: 'dfdsfd',
+          clientName: 'trete',
+          stage: 'Briefing',
+          progress: 0,
+          completedSteps: 0,
+          totalSteps: 7,
+          nextDeadlineLabel: 'Moodboard & Território Visual',
+          nextDeadlineDate: '26 de nov.',
+          metrics: {
+            demandas: 3,
+            emAndamento: 3,
+            aprovacoes: 3
+          },
+          updates: [
+            {
+              id: 1,
+              tag: 'Arte',
+              isNew: true,
+              title: 'Designer responsável enviou para aprovação',
+              description: 'Ingrid enviou a arte "WhatsApp Image 2026-11-18 at 13.39.39" para aprovação em dfdsfd.',
+              author: 'Ingrid',
+              time: '19/11 • 11:16'
+            },
+            {
+              id: 2,
+              tag: 'Material',
+              isNew: true,
+              title: 'Material recebido e lido: Sistema de Logotipo & Paleta',
+              description: 'Ingrid visualizou e confirmou o recebimento dos materiais de "Sistema de Logotipo & Paleta".',
+              author: 'Ingrid',
+              time: '19/11 • 11:00'
+            },
+            {
+              id: 3,
+              tag: 'Contrato',
+              isNew: false,
+              title: 'Contrato e Proposta Comercial vinculados ao portal',
+              description: 'Documentação inicial disponível na pasta Contrato e Proposta Comercial.',
+              author: 'Aumi Studio',
+              time: '18/11 • 16:40'
+            }
+          ],
+          externalSignals: [
+            {
+              id: 'sig-1',
+              text: 'Designer responsável enviou para aprovação',
+              time: '19/11 • 11:16',
+              read: false
+            },
+            {
+              id: 'sig-2',
+              text: 'Material recebido e lido: Sistema de Logotipo & Paleta',
+              time: '19/11 • 11:00',
+              read: false
+            }
+          ],
+          demands: [
+            { id: 'd1', title: 'Preenchimento e revisão do Briefing Estratégico', status: 'Em andamento', due: '21 de nov.', priority: 'Alta' },
+            { id: 'd2', title: 'Pesquisa de referências para Moodboard & Território Visual', status: 'Em andamento', due: '26 de nov.', priority: 'Média' },
+            { id: 'd3', title: 'Validação de paletas e direção tipográfica', status: 'Aguardando aprovação', due: '30 de nov.', priority: 'Alta' }
+          ],
+          steps: [
+            { id: 1, title: '1. Briefing & Alinhamento', status: 'current', date: 'Atual' },
+            { id: 2, title: '2. Moodboard & Território Visual', status: 'pending', date: '26 de nov.' },
+            { id: 3, title: '3. Sistema de Logotipo', status: 'pending', date: '03 de dez.' },
+            { id: 4, title: '4. Paleta de Cores & Tipografia', status: 'pending', date: '08 de dez.' },
+            { id: 5, title: '5. Aplicações & Mockups', status: 'pending', date: '12 de dez.' },
+            { id: 6, title: '6. Revisão & Ajustes Finos', status: 'pending', date: '15 de dez.' },
+            { id: 7, title: '7. Entrega Final & Brandbook', status: 'pending', date: '18 de dez.' }
+          ],
+          arts: [
+            {
+              id: 'art-1',
+              name: 'WhatsApp Image 2026-11-18 at 13.39.39.jpg',
+              dimensions: '1080 × 1350 px',
+              status: 'Aguardando aprovação',
+              uploadedBy: 'Ingrid',
+              date: '19/11 • 11:16',
+              previewGradient: 'from-pink-200 via-rose-100 to-amber-100'
+            }
+          ],
+          folders: [
+            {
+              id: 'briefing',
+              name: 'Briefing',
+              subtitle: 'Questionário e diretrizes iniciais',
+              files: [
+                { name: 'Briefing_Estrategico_trete.pdf', size: '1.4 MB', date: '18/11/2026', type: 'PDF' },
+                { name: 'Respostas_Cliente_trete.docx', size: '420 KB', date: '18/11/2026', type: 'DOC' }
+              ]
+            },
+            {
+              id: 'contrato',
+              name: 'Contrato e Proposta',
+              subtitle: 'Escopo comercial e prazos acordados',
+              files: [
+                { name: 'Contrato_AumiStudio_trete_Assinado.pdf', size: '2.1 MB', date: '17/11/2026', type: 'PDF' }
+              ]
+            },
+            {
+              id: 'drive',
+              name: 'Google Drive',
+              subtitle: 'Pasta sincronizada na nuvem',
+              files: [
+                { name: 'Pasta_Compartilhada_Assets_Brutos (Link)', size: 'Nuvem', date: 'Sincronizado', type: 'LINK' }
+              ]
+            },
+            {
+              id: 'anexos',
+              name: 'Anexos (1)',
+              subtitle: 'Referências enviadas pelo cliente',
+              files: [
+                { name: 'Sistema_de_Logotipo_e_Paleta_Ref.pdf', size: '4.8 MB', date: '19/11/2026', type: 'PDF' }
+              ]
+            },
+            {
+              id: 'artes-finais',
+              name: 'Aprovação de Artes',
+              subtitle: 'Arquivos em alta resolução (1080×1350)',
+              files: [
+                { name: 'WhatsApp Image 2026-11-18 at 13.39.39.jpg', size: '3.2 MB', date: '19/11/2026', type: 'IMG' }
+              ]
+            }
+          ],
+          comments: [
+            { author: 'Ingrid', role: 'Designer Responsável', text: 'Enviei a primeira prévia visual para análise em alta qualidade. Me avise o que achou da composição!', time: '19/11 às 11:16' }
+          ]
+        },
+        {
+          id: 'nayra',
+          name: 'Cliente: Nayra',
+          code: 'identidade-26',
+          clientName: 'Nayra',
+          stage: 'Sistema de Logotipo',
+          progress: 42,
+          completedSteps: 3,
+          totalSteps: 7,
+          nextDeadlineLabel: 'Apresentação de Logotipo',
+          nextDeadlineDate: '24 de nov.',
+          metrics: { demandas: 2, emAndamento: 1, aprovacoes: 1 },
+          updates: [
+            { id: 10, tag: 'Etapa', isNew: true, title: 'Moodboard aprovado pela cliente Nayra', description: 'Território visual validado sem alterações.', author: 'Nayra', time: '18/11 • 17:20' }
+          ],
+          externalSignals: [
+            { id: 'sig-n1', text: 'Moodboard aprovado pela cliente Nayra', time: '18/11 • 17:20', read: true }
+          ],
+          demands: [
+            { id: 'dn1', title: 'Refinamento do símbolo principal', status: 'Em andamento', due: '24 de nov.', priority: 'Alta' },
+            { id: 'dn2', title: 'Aplicação em papelaria boutique', status: 'Pendente', due: '29 de nov.', priority: 'Média' }
+          ],
+          steps: [
+            { id: 1, title: '1. Briefing & Alinhamento', status: 'done', date: 'Concluído' },
+            { id: 2, title: '2. Moodboard & Território Visual', status: 'done', date: 'Concluído' },
+            { id: 3, title: '3. Sistema de Logotipo', status: 'current', date: '24 de nov.' },
+            { id: 4, title: '4. Paleta & Tipografia', status: 'pending', date: '29 de nov.' }
+          ],
+          arts: [],
+          folders: [
+            { id: 'briefing', name: 'Briefing', subtitle: 'Diretrizes aprovadas', files: [{ name: 'Briefing_Nayra.pdf', size: '1.2 MB', date: '10/11/2026', type: 'PDF' }] },
+            { id: 'contrato', name: 'Contrato e Proposta', subtitle: 'Documento assinado', files: [{ name: 'Proposta_Nayra.pdf', size: '1.8 MB', date: '08/11/2026', type: 'PDF' }] }
+          ],
+          comments: []
+        }
+      ]
+    };
+
+    const navItems = [
+      { id: 'visao-geral', label: 'Visão Geral', color: 'bg-pink-500', icon: `<path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>` },
+      { id: 'mural', label: 'Mural de Atualizações', color: 'bg-rose-500', badgeKey: 'updates', icon: `<path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>` },
+      { id: 'processo', label: 'Processo & Etapas', color: 'bg-violet-500', icon: `<path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>` },
+      { id: 'demandas', label: 'Demandas', color: 'bg-purple-500', badgeKey: 'demands', icon: `<path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>` },
+      { id: 'aprovacao', label: 'Aprovação de Artes', color: 'bg-fuchsia-500', badgeKey: 'arts', icon: `<path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>` },
+      { id: 'arquivos', label: 'Arquivos & Pastas', color: 'bg-[#F46AA3]', icon: `<path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>` },
+      { id: 'calendario', label: 'Calendário', color: 'bg-amber-500', icon: `<path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>` },
+      { id: 'comentarios', label: 'Comentários', color: 'bg-sky-500', icon: `<path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>` }
+    ];
+
+    function getActiveProject() {
+      return state.projects.find(p => p.id === state.activeTabId) || state.projects[0];
+    }
+
+    // =========================================================================
+    // RENDERIZAÇÃO DAS ABAS SUPERIORES (Estilo 4ª imagem)
+    // =========================================================================
+    function renderBrowserTabs() {
+      const container = document.getElementById('browser-tabs');
+      container.innerHTML = state.projects.map(proj => {
+        const isActive = proj.id === state.activeTabId;
+        return `
+          <div onclick="switchProjectTab('${proj.id}')" class="group flex items-center gap-2.5 px-3 py-1.5 rounded-xl cursor-pointer transition-all max-w-[220px] shrink-0 ${
+            isActive
+              ? 'browser-tab-active text-gray-900 font-semibold border border-black/[0.06]'
+              : 'text-gray-600 hover:bg-white/50 font-medium'
+          }">
+            <!-- Ícone Vinho + Rabisco Rosa (Ref. 4ª imagem) -->
+            <span class="w-5 h-5 rounded-md bg-[#3B0918] flex items-center justify-center shrink-0 shadow-2xs">
+              <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none">
+                <path d="M4 15C6 10 9 9 10 13C11 16 14 9 16 12C17.5 14 19 11 20 10" stroke="#F9A8D4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            <span class="text-xs truncate">${proj.id === 'trete' ? `Projeto: ${proj.name}` : proj.name}</span>
+            ${state.projects.length > 1 ? `
+              <button onclick="closeProjectTab(event, '${proj.id}')" class="ml-auto opacity-0 group-hover:opacity-100 hover:bg-gray-200/80 rounded-md p-0.5 text-gray-500 transition">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    // =========================================================================
+    // RENDERIZAÇÃO DA SIDEBAR ESQUERDA
+    // =========================================================================
+    function renderSidebar() {
+      const proj = getActiveProject();
+      document.getElementById('sidebar-project-name').textContent = `Projeto: ${proj.name}`;
+      document.getElementById('sidebar-project-sub').textContent = `Etapa: ${proj.stage} • ${proj.progress}%`;
+      document.getElementById('breadcrumb-project').textContent = `${proj.name} (${proj.code})`;
+
+      const navContainer = document.getElementById('sidebar-nav');
+      navContainer.innerHTML = navItems.map(item => {
+        const isActive = state.activeSection === item.id;
+        let badgeHtml = '';
+
+        if (item.badgeKey === 'updates') {
+          const unread = proj.updates.filter(u => u.isNew).length;
+          if (unread > 0) {
+            badgeHtml = `<span class="px-1.5 py-0.5 text-[10px] font-bold rounded-full ${isActive ? 'bg-white text-[#E94E8A]' : 'bg-rose-500 text-white'}">${unread}</span>`;
+          }
+        } else if (item.badgeKey === 'demands') {
+          badgeHtml = `<span class="px-1.5 py-0.5 text-[10px] font-semibold rounded-full ${isActive ? 'bg-white/20 text-white' : 'bg-black/[0.06] text-gray-600'}">${proj.demands.length}</span>`;
+        } else if (item.badgeKey === 'arts' && proj.arts.length > 0) {
+          badgeHtml = `<span class="px-1.5 py-0.5 text-[10px] font-semibold rounded-full ${isActive ? 'bg-white/20 text-white' : 'bg-pink-100 text-[#E94E8A]'}">${proj.arts.length}</span>`;
+        }
+
+        return `
+          <button onclick="switchSection('${item.id}')" class="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-medium transition-all ${
+            isActive
+              ? 'bg-[#E94E8A] text-white shadow-xs'
+              : 'text-gray-700 hover:bg-black/[0.05]'
+          }">
+            <span class="flex items-center gap-2.5 truncate">
+              <span class="w-5 h-5 rounded-md ${isActive ? 'bg-white/20 text-white' : item.color + ' text-white'} flex items-center justify-center shrink-0">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">${item.icon}</svg>
+              </span>
+              <span class="truncate">${item.label}</span>
+            </span>
+            ${badgeHtml}
+          </button>
+        `;
+      }).join('');
+    }
+
+    // =========================================================================
+    // SVG REUTILIZÁVEL DE PASTA ROSA TRANSLÚCIDA (Ref. 2ª imagem)
+    // =========================================================================
+    function getPinkFolderSvg(sizeClass = "w-16 h-14", hasDocs = true) {
+      const uid = Math.random().toString(36).substring(2, 7);
+      return `
+        <svg viewBox="0 0 64 56" class="${sizeClass} drop-shadow-sm transition-transform duration-200 group-hover:scale-105">
+          <defs>
+            <linearGradient id="fb-${uid}" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#FF94C5" />
+              <stop offset="100%" stop-color="#E94E8A" />
+            </linearGradient>
+            <linearGradient id="ff-${uid}" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#FFB9DA" stop-opacity="0.88" />
+              <stop offset="50%" stop-color="#F46AA3" stop-opacity="0.82" />
+              <stop offset="100%" stop-color="#D83574" stop-opacity="0.93" />
+            </linearGradient>
+          </defs>
+          <path d="M6 10C6 6.686 8.686 4 12 4H25C27.2 4 29.1 5.1 30.2 6.8L32 9.5H52C55.314 9.5 58 12.186 58 15.5V44C58 47.314 55.314 50 52 50H12C8.686 50 6 47.314 6 44V10Z" fill="url(#fb-${uid})" />
+          ${hasDocs ? `
+            <rect x="12" y="10" width="25" height="25" rx="3" transform="rotate(-7 12 10)" fill="#FFFFFF" />
+            <rect x="16" y="13" width="15" height="2.5" rx="1.2" transform="rotate(-7 16 13)" fill="#E9C3D3" />
+            <rect x="23" y="11" width="24" height="25" rx="3" fill="#FAFAFC" />
+            <rect x="27" y="15" width="14" height="2.5" rx="1.2" fill="#E4BCCB" />
+          ` : ''}
+          <path d="M4 20C4 16.686 6.686 14 10 14H26.5C28.4 14 30.2 14.9 31.3 16.4L33.2 19H54C57.314 19 60 21.686 60 25V45C60 48.866 56.866 52 53 52H11C7.134 52 4 48.866 4 45V20Z" fill="url(#ff-${uid})" stroke="#FFFFFF" stroke-opacity="0.7" stroke-width="1" />
+        </svg>
+      `;
+    }
+
+    // =========================================================================
+    // RENDERIZAÇÃO DO CONTEÚDO PRINCIPAL POR SEÇÃO
+    // =========================================================================
+    function renderMainContent() {
+      const main = document.getElementById('main-content');
+      const proj = getActiveProject();
+
+      if (state.searchQuery.trim() !== '') {
+        main.innerHTML = renderSearchResults(proj, state.searchQuery.trim());
+        return;
+      }
+
+      switch (state.activeSection) {
+        case 'visao-geral':
+          main.innerHTML = renderOverview(proj);
+          break;
+        case 'mural':
+          main.innerHTML = renderMural(proj);
+          break;
+        case 'processo':
+          main.innerHTML = renderProcess(proj);
+          break;
+        case 'demandas':
+          main.innerHTML = renderDemands(proj);
+          break;
+        case 'aprovacao':
+          main.innerHTML = renderArtApproval(proj);
+          break;
+        case 'arquivos':
+          main.innerHTML = renderFinderFiles(proj);
+          break;
+        case 'calendario':
+          main.innerHTML = renderCalendar(proj);
+          break;
+        case 'comentarios':
+          main.innerHTML = renderComments(proj);
+          break;
+        default:
+          main.innerHTML = renderOverview(proj);
+      }
+    }
+
+    // 1. VISÃO GERAL (Organizada, limpa e sem poluição visual)
+    function renderOverview(proj) {
+      const unreadCount = proj.updates.filter(u => u.isNew).length;
+      return `
+        <div class="max-w-6xl mx-auto space-y-6 animate-view">
+          
+          <!-- Banner de Boas-Vindas Compacto e Elegante -->
+          <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-card flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-black/[0.04]">
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#FDF2F7] text-[#E94E8A] border border-pink-200/70">Boas-vindas</span>
+                <span class="text-xs font-mono text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md">${proj.code}</span>
+                ${!state.clientViewMode ? `<span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#3B0918] text-pink-200">Modo Equipe Interna</span>` : ''}
+              </div>
+              <h1 class="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">Olá, ${proj.clientName}!</h1>
+              <p class="text-sm text-gray-500">Acompanhe tudo o que está acontecendo com seu projeto em um só lugar.</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 shrink-0">
+              <button onclick="openFolderDirect('briefing')" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#F6F6F8] hover:bg-gray-200/70 text-gray-800 border border-black/[0.06] transition flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-[#F46AA3]"></span>
+                Briefing
+              </button>
+              <button onclick="openFolderDirect('contrato')" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#F6F6F8] hover:bg-gray-200/70 text-gray-800 border border-black/[0.06] transition flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-[#3B0918]"></span>
+                Contrato e Proposta
+              </button>
+              <button onclick="scrollToKanban()" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#3B0918] hover:bg-[#520d22] text-white transition">
+                Ver Quadros Kanban
+              </button>
+            </div>
+          </div>
+
+          <!-- 1. GRADE DE PASTAS ROSAS TRANSLÚCIDAS 3D (Estilo macOS Finder) -->
+          <div class="bg-white rounded-2xl p-5 shadow-card border border-black/[0.04]">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h2 class="text-sm font-bold text-gray-900">Diretórios do Projeto</h2>
+                <p class="text-xs text-gray-400">Clique em qualquer pasta para abrir os arquivos e detalhes</p>
+              </div>
+              <button onclick="switchSection('arquivos')" class="text-xs font-semibold text-[#E94E8A] hover:underline">Abrir no Finder →</button>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              ${[
+                { id: 'briefing', label: 'Briefing', count: '', action: "openFolderDirect('briefing')" },
+                { id: 'demandas', label: 'Demandas (3)', count: '3 itens', action: "switchSection('demandas')" },
+                { id: 'andamento', label: 'Em andamento (3)', count: 'Ativas', action: "scrollToKanban()" },
+                { id: 'aprovacoes', label: 'Aprovações (3)', count: 'Pendentes', action: "switchSection('aprovacao')" },
+                { id: 'mural', label: 'Mural de atualizações', count: '5 novas', action: "switchSection('mural')" },
+                { id: 'artes', label: 'Aprovação de Artes', count: '1080×1350', action: "switchSection('aprovacao')" },
+                { id: 'anexos', label: 'Anexos (1)', count: '1 arquivo', action: "openFolderDirect('anexos')" },
+                { id: 'quadros', label: 'Quadros do projeto', count: '6 colunas', action: "scrollToKanban()" }
+              ].map(f => `
+                <button onclick="${f.action}" class="group p-3.5 rounded-2xl bg-[#F6F6F8]/70 hover:bg-[#FDF2F7]/70 border border-black/[0.04] hover:border-pink-200 transition-all flex flex-col items-center text-center">
+                  ${getPinkFolderSvg("w-16 h-14", true)}
+                  <span class="mt-2 text-xs font-bold text-gray-900 group-hover:text-[#E94E8A] transition">${f.label}</span>
+                  <span class="text-[10px] text-gray-400 mt-0.5">${f.count || 'Pasta'}</span>
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- 2. SEÇÃO INTERMEDIÁRIA: Evolução das entregas + Aprovação de Artes -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            
+            <!-- Card Esquerdo: Evolução das entregas -->
+            <div class="lg:col-span-6 bg-white rounded-2xl p-5 shadow-card border border-black/[0.04] flex flex-col justify-between">
+              <div>
+                <div class="flex items-start justify-between gap-2 mb-3">
+                  <div>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Progresso Geral</span>
+                    <h3 class="text-base font-bold text-gray-900">Evolução das entregas</h3>
+                  </div>
+                  <span class="text-2xl font-bold text-[#E94E8A]">${proj.progress}%</span>
+                </div>
+
+                <!-- Barra de progresso -->
+                <div class="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden mb-2.5">
+                  <div class="h-full bg-gradient-to-r from-[#F46AA3] to-[#E94E8A] rounded-full transition-all duration-500" style="width: ${Math.max(proj.progress, 4)}%"></div>
+                </div>
+
+                <div class="flex items-center justify-between text-xs text-gray-500 mb-4">
+                  <span>0 de ${proj.demands.length} demandas finalizadas</span>
+                  <span class="font-medium text-gray-600">${proj.completedSteps}/${proj.totalSteps} etapas</span>
+                </div>
+
+                <!-- Atalhos rápidos em pílulas -->
+                <div class="flex flex-wrap gap-2 mb-4">
+                  <button onclick="openFolderDirect('briefing')" class="px-2.5 py-1.5 rounded-xl text-xs font-medium bg-[#F6F6F8] hover:bg-pink-50 text-gray-700 border border-black/[0.05] transition">📄 Briefing</button>
+                  <button onclick="openFolderDirect('contrato')" class="px-2.5 py-1.5 rounded-xl text-xs font-medium bg-[#F6F6F8] hover:bg-pink-50 text-gray-700 border border-black/[0.05] transition">📑 Contrato e Proposta</button>
+                  <button onclick="openFolderDirect('anexos')" class="px-2.5 py-1.5 rounded-xl text-xs font-medium bg-[#F6F6F8] hover:bg-pink-50 text-gray-700 border border-black/[0.05] transition">📎 Anexos (1)</button>
+                  <button onclick="switchSection('comentarios')" class="px-2.5 py-1.5 rounded-xl text-xs font-medium bg-[#F6F6F8] hover:bg-pink-50 text-gray-700 border border-black/[0.05] transition">💬 Comentários</button>
+                </div>
+              </div>
+
+              <div class="pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
+                <span class="text-gray-500">Próximo prazo: <strong class="text-gray-900">Moodboard & Território Visual</strong></span>
+                <span class="px-2.5 py-1 rounded-lg bg-[#FDF2F7] text-[#E94E8A] font-semibold">28 de nov.</span>
+              </div>
+            </div>
+
+            <!-- Card Direito: Aprovação de Artes -->
+            <div class="lg:col-span-6 bg-white rounded-2xl p-5 shadow-card border border-black/[0.04] flex flex-col justify-between">
+              <div class="flex items-start justify-between gap-2 mb-3">
+                <div>
+                  <h3 class="text-base font-bold text-gray-900">Aprovação de Artes</h3>
+                  <p class="text-xs text-gray-400">Visualização em alta qualidade, comentários pontuais e aprovação direta</p>
+                </div>
+                <button onclick="triggerArtUpload()" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-[#3B0918] hover:bg-[#520d22] text-white transition shrink-0">
+                  + Selecionar imagens
+                </button>
+              </div>
+
+              ${proj.arts.length === 0 ? `
+                <div onclick="triggerArtUpload()" class="flex-1 min-h-[120px] rounded-2xl border-2 border-dashed border-pink-200 hover:border-[#E94E8A] bg-[#F6F6F8]/60 hover:bg-[#FDF2F7]/50 p-5 flex flex-col items-center justify-center text-center cursor-pointer transition">
+                  <p class="text-xs font-bold text-gray-800">Nenhuma arte enviada para aprovação ainda</p>
+                  <p class="text-[11px] text-gray-500 mt-1 max-w-md">Envie artes em resolução original (ex: 1080×1350px) sem compressão para o cliente revisar e aprovar.</p>
+                </div>
+              ` : `
+                <div class="space-y-2.5">
+                  ${proj.arts.map(art => `
+                    <div class="flex items-center justify-between gap-3 p-3 rounded-xl bg-[#F6F6F8] border border-black/[0.05]">
+                      <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br ${art.previewGradient} border border-white shadow-2xs flex items-center justify-center text-[10px] font-bold text-[#3B0918] shrink-0">IMG</div>
+                        <div class="min-w-0">
+                          <p class="text-xs font-semibold text-gray-900 truncate">${art.name}</p>
+                          <p class="text-[11px] text-gray-500">${art.dimensions} • ${art.status}</p>
+                        </div>
+                      </div>
+                      <button onclick="approveArt('${art.id}')" class="px-3 py-1.5 rounded-xl text-[11px] font-semibold ${art.status === 'Aprovada' ? 'bg-emerald-100 text-emerald-700' : 'bg-white hover:bg-pink-50 text-[#E94E8A] border border-pink-200'} shrink-0 transition">
+                        ${art.status === 'Aprovada' ? '✓ Aprovada' : 'Revisar'}
+                      </button>
+                    </div>
+                  `).join('')}
+                </div>
+              `}
+            </div>
+          </div>
+
+          <!-- 3. BARRA HORIZONTAL: Sinalizações externas do projeto -->
+          <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-card border border-black/[0.04]">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <div class="flex items-center gap-2.5">
+                <span class="w-7 h-7 rounded-xl bg-rose-50 text-[#E94E8A] flex items-center justify-center shrink-0">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                </span>
+                <div>
+                  <h3 class="text-sm font-bold text-gray-900">Sinalizações externas do projeto</h3>
+                  <p class="text-[11px] text-gray-400">Marque notificações como lidas aqui sem mover ou alterar a posição dos cards no quadro</p>
+                </div>
+              </div>
+              <button onclick="markAllSignalsRead()" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#F6F6F8] hover:bg-pink-50 text-gray-700 hover:text-[#E94E8A] border border-black/[0.06] transition">
+                ✓ Marcar avisos do mural como lidos (5)
+              </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+              ${proj.externalSignals.map(sig => `
+                <label class="flex items-center justify-between gap-2 p-3 rounded-xl border transition cursor-pointer ${
+                  sig.read ? 'bg-[#F6F6F8]/70 border-black/[0.04]' : 'bg-[#FDF2F7]/60 border-pink-200/80'
+                }">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <input type="checkbox" ${sig.read ? 'checked' : ''} onchange="toggleSignal('${sig.id}')" class="w-4 h-4 rounded accent-[#E94E8A] cursor-pointer shrink-0" />
+                    <span class="text-xs font-medium text-gray-800 truncate">${sig.text}</span>
+                  </div>
+                  <div class="flex items-center gap-1.5 shrink-0">
+                    <span class="text-[10px] text-gray-400">${sig.time}</span>
+                    <span class="px-2 py-0.5 rounded-md text-[10px] font-semibold ${sig.read ? 'bg-emerald-100 text-emerald-700' : 'bg-white text-gray-600 border border-gray-200'}">
+                      ${sig.read ? '✓ Lido' : 'Lido'}
+                    </span>
+                  </div>
+                </label>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- 4. QUADROS DO PROJETO (KANBAN COMPLETO NO FINAL) -->
+          <section id="kanban-section" class="bg-white rounded-2xl p-5 shadow-card border border-black/[0.04]">
+            <div class="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-gray-100">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-[#FDF2F7] text-[#E94E8A] flex items-center justify-center">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg>
+                </div>
+                <div>
+                  <h2 class="text-base font-bold text-gray-900">Quadros do projeto</h2>
+                  <p class="text-xs text-gray-400">Demandas organizadas por etapas • Arraste os cards ou use as setas para mover</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="addKanbanColumn()" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#F6F6F8] hover:bg-gray-200/70 text-gray-700 border border-black/[0.06] transition">
+                  + Nova coluna
+                </button>
+                <button onclick="switchSection('calendario')" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#F6F6F8] hover:bg-gray-200/70 text-gray-700 border border-black/[0.06] transition">
+                  Ver calendário ›
+                </button>
+              </div>
+            </div>
+
+            <!-- Colunas Horizontais do Kanban -->
+            <div class="flex gap-4 overflow-x-auto pb-3">
+              ${proj.kanbanColumns.map((col, colIndex) => `
+                <div
+                  ondragover="event.preventDefault()"
+                  ondrop="handleKanbanDrop(event, '${col.id}')"
+                  class="w-72 shrink-0 bg-[#F6F6F8] rounded-2xl p-3 border border-black/[0.05] flex flex-col justify-between min-h-[260px]"
+                >
+                  <div>
+                    <!-- Cabeçalho da Coluna -->
+                    <div class="flex items-center justify-between px-1 mb-3">
+                      <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full ${col.dotColor}"></span>
+                        <h3 class="text-xs font-bold text-gray-800">${col.title}</h3>
+                        <span class="px-1.5 py-0.5 text-[10px] font-bold bg-white text-gray-600 rounded-md border border-black/[0.05]">${col.cards.length}</span>
+                      </div>
+                      <button onclick="openNewCardModal('${col.id}')" title="Adicionar neste estágio" class="text-gray-400 hover:text-[#E94E8A] text-sm font-bold px-1">•••</button>
+                    </div>
+
+                    <!-- Cards da Coluna -->
+                    <div class="space-y-2.5">
+                      ${col.cards.map(card => `
+                        <div
+                          draggable="true"
+                          ondragstart="handleKanbanDragStart(event, '${col.id}', '${card.id}')"
+                          class="bg-white p-3.5 rounded-xl shadow-2xs border border-black/[0.05] hover:border-pink-300 cursor-grab active:cursor-grabbing transition group"
+                        >
+                          <div class="flex items-start justify-between gap-2 mb-1.5">
+                            <h4 class="text-xs font-bold text-gray-900 leading-snug">${card.title}</h4>
+                            <div class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition shrink-0">
+                              ${colIndex > 0 ? `<button onclick="moveKanbanCard('${col.id}', '${card.id}', -1)" title="Mover para etapa anterior" class="p-1 rounded hover:bg-gray-100 text-gray-500 text-[10px]">←</button>` : ''}
+                              ${colIndex < proj.kanbanColumns.length - 1 ? `<button onclick="moveKanbanCard('${col.id}', '${card.id}', 1)" title="Avançar etapa" class="p-1 rounded hover:bg-pink-50 text-[#E94E8A] text-[10px]">→</button>` : ''}
+                            </div>
+                          </div>
+
+                          <p class="text-[11px] text-gray-500 mb-2.5">${card.category}</p>
+
+                          <!-- Progresso de Subtarefas & Badges -->
+                          <div class="flex flex-wrap items-center gap-1.5 mb-2.5">
+                            <span class="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-[#F6F6F8] text-gray-600 border border-black/[0.05]">
+                              ☑ ${card.subtasks}
+                            </span>
+                            ${card.badge ? `
+                              <span class="px-2 py-0.5 rounded-md text-[10px] font-semibold ${card.badgeStyle || 'bg-indigo-50 text-indigo-600'}">
+                                ${card.badge}
+                              </span>
+                            ` : ''}
+                          </div>
+
+                          <div class="pt-2 border-t border-gray-100 flex items-center justify-between text-[11px]">
+                            <span class="w-5 h-5 rounded-full bg-[#3B0918] text-pink-200 text-[9px] font-bold flex items-center justify-center">I</span>
+                            ${card.completed ? `
+                              <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200/70">✓ Concluída</span>
+                            ` : `
+                              <span class="font-medium text-gray-500">${card.dueDate}</span>
+                            `}
+                          </div>
+                        </div>
+                      `).join('')}
+                    </div>
+                  </div>
+
+                  <!-- Botão + Adicionar demanda no rodapé de cada coluna -->
+                  <button onclick="openNewCardModal('${col.id}')" class="mt-3 w-full py-2 rounded-xl text-xs font-semibold text-gray-600 hover:text-[#E94E8A] bg-white/80 hover:bg-white border border-dashed border-gray-300 hover:border-[#F46AA3] transition">
+                    + Adicionar demanda
+                  </button>
+                </div>
+              `).join('')}
+            </div>
+          </section>
+
+        </div>
+      `;
+    }
+
+    // 2. ARQUIVOS & PASTAS (Estilo macOS Finder com Pastas Rosas Translúcidas da 2ª imagem)
+    function renderFinderFiles(proj) {
+      const selectedFolder = proj.folders.find(f => f.id === state.activeFolderId) || proj.folders[0];
+      return `
+        <div class="max-w-6xl mx-auto space-y-6 animate-view">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h1 class="text-xl font-bold text-gray-900">Arquivos & Pastas do Projeto</h1>
+              <p class="text-xs text-gray-500">Organização visual estilo macOS Finder • Clique em uma pasta rosa para explorar</p>
+            </div>
+            <button onclick="triggerArtUpload()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-[#3B0918] hover:bg-[#520d22] text-white transition flex items-center gap-1.5">
+              <span>+ Adicionar Arquivo</span>
+            </button>
+          </div>
+
+          <!-- Grid de Pastas Estilo macOS Finder (Inspirado na 2ª imagem) -->
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            ${proj.folders.map(folder => {
+              const isSelected = selectedFolder && selectedFolder.id === folder.id;
+              return `
+                <button onclick="selectFinderFolder('${folder.id}')" class="group p-4 rounded-2xl text-center transition-all flex flex-col items-center ${
+                  isSelected
+                    ? 'bg-white shadow-card ring-2 ring-[#F46AA3]'
+                    : 'bg-white/70 hover:bg-white border border-black/[0.04]'
+                }">
+                  ${getPinkFolderSvg("w-20 h-16", folder.files.length > 0)}
+                  <span class="mt-2.5 text-xs font-bold text-gray-900 group-hover:text-[#E94E8A] transition">${folder.name}</span>
+                  <span class="text-[11px] text-gray-400 mt-0.5">${folder.files.length} ${folder.files.length === 1 ? 'item' : 'itens'}</span>
+                </button>
+              `;
+            }).join('')}
+          </div>
+
+          <!-- Conteúdo da Pasta Selecionada -->
+          ${selectedFolder ? `
+            <div class="bg-white rounded-2xl p-5 shadow-card border border-black/[0.04]">
+              <div class="flex items-center justify-between pb-3 mb-3 border-b border-gray-100">
+                <div class="flex items-center gap-2.5">
+                  <span class="w-2.5 h-2.5 rounded-full bg-[#F46AA3]"></span>
+                  <h3 class="text-sm font-bold text-gray-900">Pasta: ${selectedFolder.name}</h3>
+                  <span class="text-xs text-gray-400">— ${selectedFolder.subtitle}</span>
+                </div>
+                <span class="text-xs font-medium text-gray-400">${selectedFolder.files.length} arquivo(s)</span>
+              </div>
+
+              <div class="divide-y divide-gray-100">
+                ${selectedFolder.files.map(file => `
+                  <div onclick="openFileModal('${file.name}', '${file.type}', '${file.size}', '${file.date}')" class="py-3 px-2 flex items-center justify-between hover:bg-[#FDF2F7]/50 rounded-xl cursor-pointer transition">
+                    <div class="flex items-center gap-3 min-w-0">
+                      <span class="w-9 h-9 rounded-xl bg-pink-50 text-[#E94E8A] font-bold text-[10px] flex items-center justify-center border border-pink-100 shrink-0">
+                        ${file.type}
+                      </span>
+                      <div class="min-w-0">
+                        <p class="text-xs sm:text-sm font-semibold text-gray-900 truncate">${file.name}</p>
+                        <p class="text-[11px] text-gray-400">Modificado em ${file.date}</p>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-4 shrink-0">
+                      <span class="text-xs text-gray-400 hidden sm:inline">${file.size}</span>
+                      <span class="text-xs font-semibold text-[#E94E8A]">Abrir →</span>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    // 3. MURAL DE ATUALIZAÇÕES
+    function renderMural(proj) {
+      return `
+        <div class="max-w-4xl mx-auto space-y-5 animate-view">
+          <div class="flex items-center justify-between">
+            <div>
+              <h1 class="text-xl font-bold text-gray-900">Mural de Atualizações</h1>
+              <p class="text-xs text-gray-500">Linha do tempo completa de aprovações, envios e leituras</p>
+            </div>
+            <button onclick="markAllUpdatesRead()" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-white border border-black/10 hover:bg-gray-50 text-gray-800 transition">
+              Marcar todas como lidas
+            </button>
+          </div>
+          <div class="space-y-3">
+            ${proj.updates.map(u => `
+              <div class="bg-white p-4 rounded-2xl shadow-card border ${u.isNew ? 'border-pink-200' : 'border-black/[0.04]'}">
+                <div class="flex items-center justify-between mb-1.5">
+                  <div class="flex items-center gap-2">
+                    ${u.isNew ? `<span class="px-2 py-0.5 text-[10px] font-bold bg-[#E94E8A] text-white rounded-full">NOVO</span>` : ''}
+                    <span class="text-xs font-semibold text-[#3B0918] bg-pink-50 px-2 py-0.5 rounded">${u.tag}</span>
+                    <h3 class="text-sm font-bold text-gray-900">${u.title}</h3>
+                  </div>
+                  <span class="text-xs text-gray-400">${u.time}</span>
+                </div>
+                <p class="text-xs sm:text-sm text-gray-600">${u.description}</p>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // 4. PROCESSO & ETAPAS
+    function renderProcess(proj) {
+      return `
+        <div class="max-w-4xl mx-auto space-y-5 animate-view">
+          <div>
+            <h1 class="text-xl font-bold text-gray-900">Processo & Etapas do Projeto</h1>
+            <p class="text-xs text-gray-500">Acompanhe cada fase de criação no Aumi Studio</p>
+          </div>
+          <div class="bg-white rounded-2xl p-5 shadow-card border border-black/[0.04] space-y-3">
+            ${proj.steps.map(step => `
+              <div class="flex items-center justify-between p-3.5 rounded-xl border ${
+                step.status === 'current'
+                  ? 'bg-[#FDF2F7] border-pink-200'
+                  : step.status === 'done'
+                  ? 'bg-emerald-50/50 border-emerald-200/70'
+                  : 'bg-[#F6F6F8] border-transparent'
+              }">
+                <div class="flex items-center gap-3">
+                  <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                    step.status === 'current'
+                      ? 'bg-[#E94E8A] text-white'
+                      : step.status === 'done'
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-gray-200 text-gray-600'
+                  }">
+                    ${step.status === 'done' ? '✓' : step.id}
+                  </span>
+                  <span class="text-sm font-semibold text-gray-900">${step.title}</span>
+                </div>
+                <span class="text-xs font-semibold px-2.5 py-1 rounded-lg ${
+                  step.status === 'current' ? 'bg-white text-[#E94E8A]' : 'text-gray-500'
+                }">${step.date}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // 5. DEMANDAS
+    function renderDemands(proj) {
+      return `
+        <div class="max-w-5xl mx-auto space-y-5 animate-view">
+          <div class="flex items-center justify-between">
+            <div>
+              <h1 class="text-xl font-bold text-gray-900">Demandas do Projeto (${proj.demands.length})</h1>
+              <p class="text-xs text-gray-500">Entregáveis ativos e prazos organizados</p>
+            </div>
+            <button onclick="addQuickDemand()" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#E94E8A] text-white hover:bg-[#d63d78] transition">
+              + Nova Demanda
+            </button>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            ${proj.demands.map(d => `
+              <div class="bg-white p-4 rounded-2xl shadow-card border border-black/[0.04] flex flex-col justify-between space-y-4">
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-pink-50 text-[#E94E8A]">${d.status}</span>
+                    <span class="text-[11px] font-medium text-gray-400">Prioridade ${d.priority}</span>
+                  </div>
+                  <h3 class="text-sm font-bold text-gray-900">${d.title}</h3>
+                </div>
+                <div class="pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+                  <span>Prazo: <strong>${d.due}</strong></span>
+                  <button onclick="showToast('Demanda atualizada!')" class="text-[#E94E8A] font-semibold hover:underline">Concluir</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // 6. APROVAÇÃO DE ARTES
+    function renderArtApproval(proj) {
+      return `
+        <div class="max-w-5xl mx-auto space-y-5 animate-view">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h1 class="text-xl font-bold text-gray-900">Aprovação de Artes</h1>
+              <p class="text-xs text-gray-500">Visualização em alta qualidade (1080×1350px) sem compressão e aprovação direta</p>
+            </div>
+            <button onclick="triggerArtUpload()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-[#E94E8A] text-white hover:bg-[#d63d78] transition">
+              Selecionar imagens
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            ${proj.arts.map(art => `
+              <div class="bg-white rounded-2xl overflow-hidden shadow-card border border-black/[0.05] flex flex-col">
+                <div class="h-56 bg-gradient-to-br ${art.previewGradient} flex flex-col items-center justify-center p-6 text-center relative">
+                  <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-white/90 text-[#3B0918] shadow-xs mb-2">${art.dimensions}</span>
+                  <p class="text-xs font-semibold text-[#3B0918] max-w-[200px] truncate">${art.name}</p>
+                </div>
+                <div class="p-4 space-y-3">
+                  <div class="flex items-center justify-between text-xs">
+                    <span class="text-gray-400">Por ${art.uploadedBy} • ${art.date}</span>
+                    <span class="font-bold ${art.status === 'Aprovada' ? 'text-emerald-600' : 'text-[#E94E8A]'}">${art.status}</span>
+                  </div>
+                  <div class="flex gap-2">
+                    <button onclick="approveArt('${art.id}')" class="flex-1 py-2 rounded-xl text-xs font-semibold ${art.status === 'Aprovada' ? 'bg-emerald-500 text-white' : 'bg-[#3B0918] text-white hover:bg-[#520d22]'} transition">
+                      ${art.status === 'Aprovada' ? '✓ Arte Aprovada' : 'Aprovar Arte'}
+                    </button>
+                    <button onclick="showToast('Solicitação de ajuste registrada')" class="px-3 py-2 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 transition">
+                      Ajuste
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+
+            <!-- Card Dropzone para nova arte -->
+            <div onclick="triggerArtUpload()" class="min-h-[280px] rounded-2xl border-2 border-dashed border-pink-200 hover:border-[#E94E8A] bg-white/60 hover:bg-white flex flex-col items-center justify-center p-6 text-center cursor-pointer transition">
+              <div class="w-12 h-12 rounded-2xl bg-[#FDF2F7] text-[#E94E8A] flex items-center justify-center mb-3">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+              </div>
+              <p class="text-sm font-bold text-gray-900">Enviar nova arte</p>
+              <p class="text-xs text-gray-500 mt-1">Resolução original sem compressão</p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // 7. CALENDÁRIO
+    function renderCalendar(proj) {
+      return `
+        <div class="max-w-4xl mx-auto space-y-5 animate-view">
+          <h1 class="text-xl font-bold text-gray-900">Calendário de Entregas — Novembro 2026</h1>
+          <div class="bg-white rounded-2xl p-5 shadow-card border border-black/[0.04] space-y-3">
+            <div class="flex items-center justify-between p-3.5 rounded-xl bg-[#FDF2F7] border border-pink-200">
+              <div>
+                <span class="text-xs font-bold text-[#E94E8A]">26 de Novembro</span>
+                <h3 class="text-sm font-bold text-gray-900">Entrega: ${proj.nextDeadlineLabel}</h3>
+              </div>
+              <span class="px-3 py-1 rounded-lg bg-white text-xs font-semibold text-gray-800">Próximo Marco</span>
+            </div>
+            <div class="flex items-center justify-between p-3.5 rounded-xl bg-[#F6F6F8]">
+              <div>
+                <span class="text-xs font-bold text-gray-500">03 de Dezembro</span>
+                <h3 class="text-sm font-bold text-gray-900">Apresentação do Sistema de Logotipo</h3>
+              </div>
+              <span class="px-3 py-1 rounded-lg bg-white text-xs font-medium text-gray-500">Agendado</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // 8. COMENTÁRIOS
+    function renderComments(proj) {
+      return `
+        <div class="max-w-3xl mx-auto space-y-5 animate-view">
+          <h1 class="text-xl font-bold text-gray-900">Comentários & Comunicação Direta</h1>
+          <div class="bg-white rounded-2xl p-5 shadow-card border border-black/[0.04] space-y-4">
+            <div class="space-y-3">
+              ${proj.comments.length === 0 ? `<p class="text-xs text-gray-400">Nenhum comentário registrado ainda.</p>` : proj.comments.map(c => `
+                <div class="p-3.5 rounded-xl bg-[#F6F6F8]">
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs font-bold text-gray-900">${c.author} <span class="font-normal text-gray-400">(${c.role})</span></span>
+                    <span class="text-[11px] text-gray-400">${c.time}</span>
+                  </div>
+                  <p class="text-xs sm:text-sm text-gray-700">${c.text}</p>
+                </div>
+              `).join('')}
+            </div>
+            <form onsubmit="submitComment(event)" class="flex gap-2 pt-2 border-t border-gray-100">
+              <input id="comment-input" type="text" required placeholder="Escreva um comentário para a equipe..." class="flex-1 px-3.5 py-2 rounded-xl text-xs bg-[#F6F6F8] border border-black/[0.06] focus:bg-white focus:border-[#F46AA3] focus:outline-none" />
+              <button type="submit" class="px-4 py-2 rounded-xl text-xs font-semibold bg-[#3B0918] text-white hover:bg-[#520d22] transition">Enviar</button>
+            </form>
+          </div>
+        </div>
+      `;
+    }
+
+    // BUSCA GLOBAL
+    function renderSearchResults(proj, query) {
+      const q = query.toLowerCase();
+      const matchedUpdates = proj.updates.filter(u => u.title.toLowerCase().includes(q) || u.description.toLowerCase().includes(q));
+      const matchedDemands = proj.demands.filter(d => d.title.toLowerCase().includes(q));
+      return `
+        <div class="max-w-4xl mx-auto space-y-4 animate-view">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-bold text-gray-900">Resultados para "${query}"</h2>
+            <button onclick="clearSearch()" class="text-xs font-semibold text-[#E94E8A] hover:underline">Limpar busca</button>
+          </div>
+          <div class="bg-white rounded-2xl p-4 shadow-card space-y-3">
+            <p class="text-xs font-bold uppercase text-gray-400">Atualizações (${matchedUpdates.length})</p>
+            ${matchedUpdates.map(u => `<div class="p-3 rounded-xl bg-[#F6F6F8] text-xs font-semibold text-gray-800">${u.title} — <span class="font-normal text-gray-500">${u.description}</span></div>`).join('') || '<p class="text-xs text-gray-400">Nenhuma atualização encontrada.</p>'}
+            <p class="text-xs font-bold uppercase text-gray-400 pt-2">Demandas (${matchedDemands.length})</p>
+            ${matchedDemands.map(d => `<div class="p-3 rounded-xl bg-[#F6F6F8] text-xs font-semibold text-gray-800">${d.title}</div>`).join('') || '<p class="text-xs text-gray-400">Nenhuma demanda encontrada.</p>'}
+          </div>
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // INTERAÇÕES E CONTROLADORES
+    // =========================================================================
+    function switchProjectTab(tabId) {
+      state.activeTabId = tabId;
+      state.activeFolderId = null;
+      renderAll();
+    }
+
+    function addNewProjectTab() {
+      const id = 'sarah-' + Date.now();
+      state.projects.push({
+        id,
+        name: 'Cliente: Sarah',
+        code: 'brand-26',
+        clientName: 'Sarah',
+        stage: 'Briefing',
+        progress: 14,
+        completedSteps: 1,
+        totalSteps: 7,
+        nextDeadlineLabel: 'Território Visual',
+        nextDeadlineDate: '02 de dez.',
+        metrics: { demandas: 1, emAndamento: 1, aprovacoes: 0 },
+        updates: [{ id: Date.now(), tag: 'Novo', isNew: true, title: 'Pasta do projeto criada no Aumi Studio', description: 'Portal pronto para envio de briefing.', author: 'Ingrid', time: 'Agora' }],
+        externalSignals: [],
+        demands: [{ id: 'ds1', title: 'Kickoff e alinhamento inicial', status: 'Em andamento', due: '02 de dez.', priority: 'Média' }],
+        steps: [{ id: 1, title: '1. Briefing & Alinhamento', status: 'current', date: 'Atual' }],
+        arts: [],
+        folders: [{ id: 'briefing', name: 'Briefing', subtitle: 'Pasta inicial', files: [{ name: 'Modelo_Briefing.pdf', size: '900 KB', date: 'Hoje', type: 'PDF' }] }],
+        comments: []
+      });
+      state.activeTabId = id;
+      renderAll();
+      showToast('Nova aba de projeto aberta!');
+    }
+
+    function closeProjectTab(e, tabId) {
+      e.stopPropagation();
+      state.projects = state.projects.filter(p => p.id !== tabId);
+      if (state.activeTabId === tabId) {
+        state.activeTabId = state.projects[0].id;
+      }
+      renderAll();
+    }
+
+    function switchSection(sectionId) {
+      state.activeSection = sectionId;
+      state.searchQuery = '';
+      document.getElementById('global-search').value = '';
+      state.history = state.history.slice(0, state.historyIndex + 1);
+      state.history.push(sectionId);
+      state.historyIndex = state.history.length - 1;
+      closeMobileSidebar();
+      renderAll();
+    }
+
+    function openFolderDirect(folderId) {
+      state.activeSection = 'arquivos';
+      state.activeFolderId = folderId;
+      closeMobileSidebar();
+      renderAll();
+    }
+
+    function selectFinderFolder(folderId) {
+      state.activeFolderId = folderId;
+      renderMainContent();
+    }
+
+    function navigateHistory(dir) {
+      const next = state.historyIndex + dir;
+      if (next >= 0 && next < state.history.length) {
+        state.historyIndex = next;
+        state.activeSection = state.history[next];
+        renderAll();
+      }
+    }
+
+    function refreshCurrentView() {
+      renderAll();
+      showToast('Portal sincronizado com sucesso');
+    }
+
+    function toggleClientView() {
+      state.clientViewMode = !state.clientViewMode;
+      const label = document.getElementById('view-mode-label');
+      label.textContent = state.clientViewMode ? 'Visão do Cliente' : 'Visão Interna';
+      renderMainContent();
+      showToast(state.clientViewMode ? 'Alternado para Visão do Cliente' : 'Alternado para Visão Interna da Equipe');
+    }
+
+    function markAllUpdatesRead() {
+      const proj = getActiveProject();
+      proj.updates.forEach(u => u.isNew = false);
+      renderAll();
+      showToast('Todas as atualizações marcadas como lidas');
+    }
+
+    function markAllSignalsRead() {
+      const proj = getActiveProject();
+      proj.externalSignals.forEach(s => s.read = true);
+      renderMainContent();
+      showToast('Sinalizações externas concluídas');
+    }
+
+    function toggleSignal(sigId) {
+      const proj = getActiveProject();
+      const target = proj.externalSignals.find(s => s.id === sigId);
+      if (target) target.read = !target.read;
+      renderMainContent();
+    }
+
+    function triggerArtUpload() {
+      document.getElementById('art-file-input').click();
+    }
+
+    function handleArtFileUpload(event) {
+      const files = Array.from(event.target.files || []);
+      if (!files.length) return;
+      const proj = getActiveProject();
+      files.forEach(f => {
+        proj.arts.unshift({
+          id: 'art-' + Date.now() + Math.random(),
+          name: f.name,
+          dimensions: '1080 × 1350 px',
+          status: 'Aguardando aprovação',
+          uploadedBy: 'Ingrid',
+          date: 'Agora',
+          previewGradient: 'from-fuchsia-200 via-pink-100 to-rose-100'
+        });
+        proj.updates.unshift({
+          id: Date.now(),
+          tag: 'Arte',
+          isNew: true,
+          title: 'Nova arte enviada para aprovação',
+          description: `Ingrid enviou "${f.name}" em resolução original.`,
+          author: 'Ingrid',
+          time: 'Agora'
+        });
+      });
+      event.target.value = '';
+      renderAll();
+      showToast(`${files.length} arte(s) enviada(s) sem compressão!`);
+    }
+
+    function approveArt(artId) {
+      const proj = getActiveProject();
+      const art = proj.arts.find(a => a.id === artId);
+      if (art) {
+        art.status = art.status === 'Aprovada' ? 'Aguardando aprovação' : 'Aprovada';
+        renderAll();
+        showToast(art.status === 'Aprovada' ? 'Arte aprovada com sucesso!' : 'Status revertido para revisão');
+      }
+    }
+
+    function addQuickDemand() {
+      const proj = getActiveProject();
+      proj.demands.push({
+        id: 'd-' + Date.now(),
+        title: 'Revisão de aplicações visuais do projeto',
+        status: 'Em andamento',
+        due: '05 de dez.',
+        priority: 'Média'
+      });
+      renderAll();
+      showToast('Nova demanda adicionada ao projeto');
+    }
+
+    function submitComment(e) {
+      e.preventDefault();
+      const input = document.getElementById('comment-input');
+      if (!input.value.trim()) return;
+      const proj = getActiveProject();
+      proj.comments.push({
+        author: 'Ingrid',
+        role: 'Aumi Studio',
+        text: input.value.trim(),
+        time: 'Agora'
+      });
+      input.value = '';
+      renderMainContent();
+      showToast('Comentário publicado');
+    }
+
+    function handleSearch(val) {
+      state.searchQuery = val;
+      renderMainContent();
+    }
+
+    function clearSearch() {
+      state.searchQuery = '';
+      document.getElementById('global-search').value = '';
+      renderMainContent();
+    }
+
+    function openFileModal(name, type, size, date) {
+      document.getElementById('modal-title').textContent = name;
+      document.getElementById('modal-body').innerHTML = `
+        <div class="bg-[#FDF2F7] p-4 rounded-xl border border-pink-200/70 flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-white text-[#E94E8A] font-bold text-xs flex items-center justify-center shadow-2xs">${type}</div>
+          <div>
+            <p class="font-semibold text-gray-900 text-xs">${name}</p>
+            <p class="text-[11px] text-gray-500">Tamanho: ${size} • Data: ${date}</p>
+          </div>
+        </div>
+        <p class="text-xs text-gray-500 leading-relaxed">Este arquivo está organizado dentro da pasta do projeto no <strong>Aumi Studio</strong> com sincronização ativa para o cliente.</p>
+      `;
+      const modal = document.getElementById('preview-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeModal() {
+      const modal = document.getElementById('preview-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function toggleMobileSidebar() {
+      const sb = document.getElementById('sidebar');
+      sb.classList.toggle('-translate-x-full');
+    }
+
+    function closeMobileSidebar() {
+      const sb = document.getElementById('sidebar');
+      if (!sb.classList.contains('-translate-x-full') && window.innerWidth < 768) {
+        sb.classList.add('-translate-x-full');
+      }
+    }
+
+    function toggleFullscreen() {
+      const win = document.getElementById('macos-window');
+      win.classList.toggle('max-w-[1440px]');
+      win.classList.toggle('h-[92vh]');
+      win.classList.toggle('h-[97vh]');
+      showToast('Tamanho da janela ajustado');
+    }
+
+    let toastTimer;
+    function showToast(msg) {
+      const toast = document.getElementById('macos-toast');
+      document.getElementById('toast-message').textContent = msg;
+      toast.classList.remove('translate-y-24', 'opacity-0');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.add('translate-y-24', 'opacity-0');
+      }, 2800);
+    }
+
+    // Atalho Cmd+K / Ctrl+K para focar na busca
+    document.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        document.getElementById('global-search')?.focus();
+      }
+    });
+
+    function renderAll() {
+      renderBrowserTabs();
+      renderSidebar();
+      renderMainContent();
+    }
+
+    window.onload = function () {
+      renderAll();
+    };
+  </script>
+</body>
+</html>
