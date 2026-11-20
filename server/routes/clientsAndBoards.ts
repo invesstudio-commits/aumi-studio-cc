@@ -379,15 +379,19 @@ router.post('/clients', requireAuth, requirePermission('can_manage_clients'), (r
     }
   }
 
+  const portalToken = `aumi-cli-${crypto.randomBytes(12).toString('hex')}`;
+  const rawPin = typeof req.body?.portal_pin === 'string' ? req.body.portal_pin.replace(/\D/g, '').trim() : '';
+  const portalPin = rawPin.length >= 4 && rawPin.length <= 6 ? rawPin : String(100000 + crypto.randomInt(0, 900000));
+
   const tx = db.transaction(() => {
     db.prepare(`
       INSERT INTO clients (
         id, name, company, contact_name, email, phone, instagram, avatar_url, description,
         owner_partner, start_date, status, contracted_services_json,
         folder_color, folder_icon, folder_cover_url,
-        notes, portal_welcome, portal_enabled, created_by, created_at, updated_at
+        notes, portal_welcome, portal_enabled, portal_token, portal_pin, created_by, created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       clientId,
       name.trim(),
@@ -408,6 +412,8 @@ router.post('/clients', requireAuth, requirePermission('can_manage_clients'), (r
       notes?.trim() || '',
       portal_welcome?.trim() || `Olá, ${name.trim()}! Acompanhe tudo o que está acontecendo com seu projeto.`,
       portal_enabled !== false ? 1 : 0,
+      portalToken,
+      portalPin,
       user.id,
       now,
       now
@@ -498,6 +504,49 @@ router.put('/clients/:id', requireAuth, requirePermission('can_manage_clients'),
       contracted_services: JSON.parse(String(updated.contracted_services_json || '[]')),
     },
   });
+});
+
+router.post('/clients/:id/regenerate-portal-link', requireAuth, requirePermission('can_manage_clients'), (req: AuthRequest, res) => {
+  const client = db.prepare('SELECT id, name FROM clients WHERE id = ?').get(req.params.id) as { id: string; name: string } | undefined;
+  if (!client) {
+    res.status(404).json({ error: 'Cliente não encontrado.' });
+    return;
+  }
+  const nextToken = `aumi-cli-${crypto.randomBytes(12).toString('hex')}`;
+  const now = new Date().toISOString();
+  db.prepare('UPDATE clients SET portal_token = ?, updated_at = ? WHERE id = ?').run(nextToken, now, client.id);
+  logActivity(req.user!.id, req.user!.name, 'regenerate_portal_link', 'client', client.id, `Gerou novo link exclusivo de portal para ${client.name}`);
+  res.json({ ok: true, portal_token: nextToken });
+});
+
+router.post('/clients/:id/pin', requireAuth, requirePermission('can_manage_clients'), (req: AuthRequest, res) => {
+  const client = db.prepare('SELECT id, name FROM clients WHERE id = ?').get(req.params.id) as { id: string; name: string } | undefined;
+  if (!client) {
+    res.status(404).json({ error: 'Cliente não encontrado.' });
+    return;
+  }
+  const { pin, regenerate } = req.body as { pin?: string; regenerate?: boolean };
+  let nextPin = '';
+  if (regenerate) {
+    nextPin = String(100000 + crypto.randomInt(0, 900000));
+  } else {
+    const clean = (pin || '').replace(/\D/g, '').trim();
+    if (clean.length < 4 || clean.length > 6) {
+      res.status(400).json({ error: 'Informe um PIN numérico de 4 a 6 dígitos.' });
+      return;
+    }
+    nextPin = clean;
+  }
+  const nextToken = `aumi-cli-${crypto.randomBytes(12).toString('hex')}`;
+  const now = new Date().toISOString();
+  db.prepare('UPDATE clients SET portal_pin = ?, portal_token = ?, updated_at = ? WHERE id = ?').run(
+    nextPin,
+    nextToken,
+    now,
+    client.id
+  );
+  logActivity(req.user!.id, req.user!.name, 'update_client_pin', 'client', client.id, `Atualizou PIN do portal de ${client.name}`);
+  res.json({ ok: true, portal_pin: nextPin, portal_token: nextToken });
 });
 
 router.post('/clients/:id/credentials', requireAuth, requirePermission('can_manage_clients'), (req: AuthRequest, res) => {
@@ -697,7 +746,7 @@ router.get('/boards/:boardId/access', requireAuth, requirePartner, (req, res) =>
   const board = db
     .prepare(`
       SELECT b.id, b.title, b.client_id, b.shared_with_client, b.share_token, b.invite_status, b.invited_email, b.invite_sent_at, b.invite_accepted_at,
-             c.name as client_name, c.email as client_email, c.portal_enabled
+             c.name as client_name, c.email as client_email, c.phone as client_phone, c.portal_enabled, c.portal_token as client_portal_token, c.portal_pin as client_portal_pin
       FROM boards b
       JOIN clients c ON c.id = b.client_id
       WHERE b.id = ?
@@ -707,6 +756,26 @@ router.get('/boards/:boardId/access', requireAuth, requirePartner, (req, res) =>
   if (!board) {
     res.status(404).json({ error: 'Quadro não encontrado.' });
     return;
+  }
+
+  let clientPortalToken = board.client_portal_token ? String(board.client_portal_token) : '';
+  if (!clientPortalToken) {
+    clientPortalToken = `aumi-cli-${crypto.randomBytes(12).toString('hex')}`;
+    db.prepare('UPDATE clients SET portal_token = ?, updated_at = ? WHERE id = ?').run(
+      clientPortalToken,
+      new Date().toISOString(),
+      board.client_id
+    );
+  }
+
+  let clientPortalPin = board.client_portal_pin ? String(board.client_portal_pin) : '';
+  if (!clientPortalPin) {
+    clientPortalPin = String(100000 + crypto.randomInt(0, 900000));
+    db.prepare('UPDATE clients SET portal_pin = ?, updated_at = ? WHERE id = ?').run(
+      clientPortalPin,
+      new Date().toISOString(),
+      board.client_id
+    );
   }
 
   const account = db
@@ -720,6 +789,9 @@ router.get('/boards/:boardId/access', requireAuth, requirePartner, (req, res) =>
       client_id: board.client_id,
       client_name: board.client_name,
       client_email: board.invited_email || account?.email || board.client_email,
+      client_phone: board.client_phone || '',
+      client_portal_token: clientPortalToken,
+      client_portal_pin: clientPortalPin,
       portal_enabled: Boolean(board.portal_enabled),
       shared_with_client: Boolean(board.shared_with_client),
       share_token: board.share_token,
@@ -801,8 +873,21 @@ router.post('/boards/:boardId/invite', requireAuth, requirePermission('can_manag
         now
       );
     } else if (!existingAccount) {
-      res.status(400).json({ error: 'Defina uma senha inicial com pelo menos 6 caracteres para criar o acesso do cliente.' });
-      return;
+      const autoHash = bcrypt.hashSync(crypto.randomBytes(18).toString('hex'), 10);
+      db.prepare(`
+        INSERT INTO users (id, name, email, password_hash, role, partner_key, avatar_url, title, bio, permissions_json, preferences_json, client_id, active, created_at, updated_at)
+        VALUES (?, ?, ?, ?, 'client', NULL, NULL, ?, '', '{}', ?, ?, 1, ?, ?)
+      `).run(
+        uid('usr'),
+        String(client.name),
+        targetEmail,
+        autoHash,
+        String(client.company || 'Cliente Aumi Studio'),
+        JSON.stringify(DEFAULT_PREFERENCES),
+        client.id,
+        now,
+        now
+      );
     }
   }
 
@@ -2971,6 +3056,10 @@ router.post('/client-portal/submit-content', requireAuth, (req: AuthRequest, res
 
 router.get('/client-portal/overview', requireAuth, (req: AuthRequest, res) => {
   const user = req.user!;
+  if (user.role === 'client' && req.query.client_id && String(req.query.client_id) !== user.client_id) {
+    res.status(403).json({ error: 'Você só tem permissão para acessar o seu próprio Portal do Cliente.' });
+    return;
+  }
   const targetClientId = user.role === 'client' ? user.client_id : (req.query.client_id as string);
 
   if (!targetClientId) {

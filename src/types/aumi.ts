@@ -100,6 +100,8 @@ export interface Client {
   notes: string;
   portal_welcome: string;
   portal_enabled: boolean;
+  portal_token?: string;
+  portal_pin?: string;
   has_login?: boolean;
   login_email?: string;
   login_active?: boolean;
@@ -938,11 +940,95 @@ export interface SearchResults {
   cards: Array<{ id: string; title: string; board_id: string; board_title: string }>;
 }
 
+export interface ContentColumn {
+  id: string;
+  title: string;
+  color: string;
+  icon: string;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface ContentFolder {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  sort_order: number;
+  items_count: number;
+  created_by: string;
+  created_at: string;
+}
+
+export interface ContentTheme {
+  id: string;
+  name: string;
+  color: string;
+  sort_order: number;
+  items_count: number;
+  created_at: string;
+}
+
+export interface ContentTag {
+  id: string;
+  name: string;
+  color: string;
+  items_count: number;
+  created_at: string;
+}
+
+export interface ContentItem {
+  id: string;
+  title: string;
+  body_html: string;
+  column_id: string;
+  folder_id: string | null;
+  theme_id: string | null;
+  tag_ids: string[];
+  card_color: string;
+  card_icon: string;
+  is_favorite: boolean;
+  is_draft: boolean;
+  sort_order: number;
+  assignee_id: string | null;
+  created_by_id: string;
+  created_by_name: string;
+  updated_by_id: string;
+  updated_by_name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContentRecentEdit {
+  id: string;
+  title: string;
+  updated_by_id: string;
+  updated_by_name: string;
+  updated_at: string;
+}
+
+export interface ContentsWorkspaceData {
+  columns: ContentColumn[];
+  folders: ContentFolder[];
+  themes: ContentTheme[];
+  tags: ContentTag[];
+  items: ContentItem[];
+  partners: Array<{
+    id: string;
+    name: string;
+    partner_key: PartnerKey | null;
+    avatar_url: string | null;
+    title: string;
+  }>;
+  recent_edits: ContentRecentEdit[];
+}
+
 export type MainTab =
   | 'inicio'
   | 'portal'
   | 'servicos'
   | 'clientes'
+  | 'conteudos'
   | 'financeiro'
   | 'sociedade'
   | 'configuracoes';

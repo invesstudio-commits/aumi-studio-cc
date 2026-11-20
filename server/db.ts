@@ -618,6 +618,300 @@ function runSafeMigrations() {
   ensureColumn('boards', 'briefing_info_json', "TEXT NOT NULL DEFAULT '{}'");
   ensureColumn('boards', 'process_state_json', "TEXT NOT NULL DEFAULT '{}'");
 
+  // Individual direct-access portal token & 6-digit PIN per client
+  ensureColumn('clients', 'portal_token', 'TEXT');
+  ensureColumn('clients', 'portal_pin', 'TEXT');
+  const clientsWithoutPortalToken = db
+    .prepare("SELECT id FROM clients WHERE portal_token IS NULL OR portal_token = ''")
+    .all() as Array<{ id: string }>;
+  if (clientsWithoutPortalToken.length > 0) {
+    const updClientToken = db.prepare('UPDATE clients SET portal_token = ? WHERE id = ?');
+    for (const c of clientsWithoutPortalToken) {
+      updClientToken.run(`aumi-cli-${crypto.randomBytes(12).toString('hex')}`, c.id);
+    }
+  }
+
+  const clientsWithoutPortalPin = db
+    .prepare("SELECT id FROM clients WHERE portal_pin IS NULL OR portal_pin = ''")
+    .all() as Array<{ id: string }>;
+  if (clientsWithoutPortalPin.length > 0) {
+    const updClientPin = db.prepare('UPDATE clients SET portal_pin = ? WHERE id = ?');
+    for (const c of clientsWithoutPortalPin) {
+      const randomPin = String(100000 + crypto.randomInt(0, 900000));
+      updClientPin.run(randomPin, c.id);
+    }
+  }
+
+  // =====================================================================
+  // ABA CONTEÚDOS — INDEPENDENT EDITORIAL WORKSPACE TABLES
+  // =====================================================================
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS content_columns (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      color TEXT NOT NULL DEFAULT '#EC2B82',
+      icon TEXT NOT NULL DEFAULT 'sparkles',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS content_folders (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      icon TEXT NOT NULL DEFAULT 'folder',
+      color TEXT NOT NULL DEFAULT '#EC2B82',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_by TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS content_themes (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      color TEXT NOT NULL DEFAULT '#7A689C',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS content_tags (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      color TEXT NOT NULL DEFAULT '#EC2B82',
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS content_items (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      body_html TEXT NOT NULL DEFAULT '',
+      column_id TEXT NOT NULL REFERENCES content_columns(id) ON DELETE CASCADE,
+      folder_id TEXT REFERENCES content_folders(id) ON DELETE SET NULL,
+      theme_id TEXT REFERENCES content_themes(id) ON DELETE SET NULL,
+      card_color TEXT NOT NULL DEFAULT '#FFFFFF',
+      card_icon TEXT NOT NULL DEFAULT 'sparkles',
+      is_favorite INTEGER NOT NULL DEFAULT 0,
+      is_draft INTEGER NOT NULL DEFAULT 0,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      assignee_id TEXT,
+      created_by_id TEXT NOT NULL,
+      created_by_name TEXT NOT NULL,
+      updated_by_id TEXT NOT NULL,
+      updated_by_name TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_content_items_column ON content_items(column_id);
+    CREATE INDEX IF NOT EXISTS idx_content_items_folder ON content_items(folder_id);
+    CREATE INDEX IF NOT EXISTS idx_content_items_theme ON content_items(theme_id);
+
+    CREATE TABLE IF NOT EXISTS content_item_tags (
+      content_id TEXT NOT NULL REFERENCES content_items(id) ON DELETE CASCADE,
+      tag_id TEXT NOT NULL REFERENCES content_tags(id) ON DELETE CASCADE,
+      PRIMARY KEY (content_id, tag_id)
+    );
+  `);
+
+  const nowContents = new Date().toISOString();
+
+  // Seed initial 5 Kanban columns for Conteúdos if empty
+  const existingContentCols = (db.prepare('SELECT COUNT(*) as c FROM content_columns').get() as { c: number }).c;
+  if (existingContentCols === 0) {
+    const seedCols = [
+      { id: 'ccol_ideias', title: 'Ideias', color: '#F58A66', icon: 'lightbulb', sort_order: 0 },
+      { id: 'ccol_producao', title: 'Em produção', color: '#7A689C', icon: 'clapperboard', sort_order: 1 },
+      { id: 'ccol_revisao', title: 'Em revisão', color: '#E1754C', icon: 'eye', sort_order: 2 },
+      { id: 'ccol_aprovados', title: 'Aprovados', color: '#9E9F4A', icon: 'check-circle', sort_order: 3 },
+      { id: 'ccol_finalizados', title: 'Finalizados', color: '#EC2B82', icon: 'sparkles', sort_order: 4 },
+    ];
+    const insCol = db.prepare('INSERT INTO content_columns (id, title, color, icon, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)');
+    for (const c of seedCols) {
+      insCol.run(c.id, c.title, c.color, c.icon, c.sort_order, nowContents);
+    }
+  }
+
+  // Seed initial folders if empty
+  const existingContentFolders = (db.prepare('SELECT COUNT(*) as c FROM content_folders').get() as { c: number }).c;
+  if (existingContentFolders === 0) {
+    const seedFolders = [
+      { id: 'cfld_reels', name: 'Reels & Vídeos', icon: 'video', color: '#7A689C', sort_order: 0 },
+      { id: 'cfld_carrosseis', name: 'Carrosséis', icon: 'layers', color: '#EC2B82', sort_order: 1 },
+      { id: 'cfld_posts', name: 'Posts Estáticos', icon: 'file-text', color: '#F58A66', sort_order: 2 },
+      { id: 'cfld_campanhas', name: 'Campanhas', icon: 'megaphone', color: '#9E9F4A', sort_order: 3 },
+      { id: 'cfld_portfolio', name: 'Portfólio', icon: 'briefcase', color: '#BC9FE6', sort_order: 4 },
+      { id: 'cfld_ideias', name: 'Banco de Ideias', icon: 'lightbulb', color: '#EC97B7', sort_order: 5 },
+    ];
+    const insFld = db.prepare('INSERT INTO content_folders (id, name, icon, color, sort_order, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)');
+    for (const f of seedFolders) {
+      insFld.run(f.id, f.name, f.icon, f.color, f.sort_order, 'system', nowContents);
+    }
+  }
+
+  // Seed initial Themes (Temas principais) if empty
+  const existingContentThemes = (db.prepare('SELECT COUNT(*) as c FROM content_themes').get() as { c: number }).c;
+  if (existingContentThemes === 0) {
+    const seedThemes = [
+      { id: 'cthm_portfolio', name: 'Portfólio', color: '#7A689C', sort_order: 0 },
+      { id: 'cthm_pessoal', name: 'Pessoal', color: '#EC2B82', sort_order: 1 },
+      { id: 'cthm_vendas', name: 'Vendas', color: '#E1754C', sort_order: 2 },
+      { id: 'cthm_marketing', name: 'Marketing', color: '#F58A66', sort_order: 3 },
+      { id: 'cthm_design', name: 'Design', color: '#BC9FE6', sort_order: 4 },
+      { id: 'cthm_repertorio', name: 'Repertório', color: '#9E9F4A', sort_order: 5 },
+    ];
+    const insThm = db.prepare('INSERT INTO content_themes (id, name, color, sort_order, created_at) VALUES (?, ?, ?, ?, ?)');
+    for (const t of seedThemes) {
+      insThm.run(t.id, t.name, t.color, t.sort_order, nowContents);
+    }
+  }
+
+  // Seed initial Tags (Etiquetas complementares) if empty
+  const existingContentTags = (db.prepare('SELECT COUNT(*) as c FROM content_tags').get() as { c: number }).c;
+  if (existingContentTags === 0) {
+    const seedTags = [
+      { id: 'ctag_urgente', name: 'Urgente', color: '#EC2B82' },
+      { id: 'ctag_revisar', name: 'Revisar', color: '#E1754C' },
+      { id: 'ctag_referencia', name: 'Referência', color: '#7A689C' },
+      { id: 'ctag_cliente_novo', name: 'Cliente novo', color: '#BC9FE6' },
+      { id: 'ctag_aprovacao', name: 'Precisa de aprovação', color: '#F58A66' },
+      { id: 'ctag_publicar', name: 'Publicar esta semana', color: '#9E9F4A' },
+    ];
+    const insTag = db.prepare('INSERT INTO content_tags (id, name, color, created_at) VALUES (?, ?, ?, ?)');
+    for (const tg of seedTags) {
+      insTag.run(tg.id, tg.name, tg.color, nowContents);
+    }
+  }
+
+  // Seed a few starter editorial cards once (tracked via studio_settings flag so deleting them stays deleted)
+  const seededContentsFlag = db
+    .prepare("SELECT key FROM studio_settings WHERE key = 'contents_seeded_v1'")
+    .get();
+  if (!seededContentsFlag) {
+    const partnerRows = db
+      .prepare("SELECT id, name, partner_key FROM users WHERE role = 'partner'")
+      .all() as Array<{ id: string; name: string; partner_key: string }>;
+    const ingridUser = partnerRows.find((p) => p.partner_key === 'ingrid') || partnerRows[0];
+    const marianaUser = partnerRows.find((p) => p.partner_key === 'mariana') || partnerRows[0];
+
+    if (ingridUser && marianaUser) {
+      const starterItems = [
+        {
+          id: 'citm_seed_1',
+          title: 'Repertório de tipografias e combinações editoriais',
+          body_html: '<h2>Curadoria de fontes Aumi</h2><p>Separar combinações com serifadas delicadas e sans geométricas para os próximos projetos de identidade visual.</p><ul><li>Editorial minimalista</li><li>Elegante contemporâneo</li><li>Orgânico artesanal</li></ul>',
+          column_id: 'ccol_ideias',
+          folder_id: 'cfld_ideias',
+          theme_id: 'cthm_repertorio',
+          card_color: '#FFFFFF',
+          card_icon: 'palette',
+          is_favorite: 1,
+          sort_order: 0,
+          assignee_id: ingridUser.id,
+          author: ingridUser,
+          tags: ['ctag_referencia'],
+        },
+        {
+          id: 'citm_seed_2',
+          title: 'Reels: rotina criativa e bastidores do estúdio',
+          body_html: '<p><strong>Gancho (0-3s):</strong> Um dia produzindo identidade visual e social media no Aumi Studio.</p><p>Gravar takes naturais com café, moodboard e tela do projeto finalizado.</p>',
+          column_id: 'ccol_ideias',
+          folder_id: 'cfld_reels',
+          theme_id: 'cthm_pessoal',
+          card_color: '#FCE4F0',
+          card_icon: 'video',
+          is_favorite: 1,
+          sort_order: 1,
+          assignee_id: marianaUser.id,
+          author: marianaUser,
+          tags: ['ctag_publicar'],
+        },
+        {
+          id: 'citm_seed_3',
+          title: 'Carrossel: por que estratégia vem antes do design',
+          body_html: '<p><strong>Slide 1:</strong> Design bonito sem posicionamento não converte.</p><p><strong>Slides 2-6:</strong> Explicar os pilares de clareza visual, narrativa e consistência de marca.</p>',
+          column_id: 'ccol_producao',
+          folder_id: 'cfld_carrosseis',
+          theme_id: 'cthm_marketing',
+          card_color: '#E4D4FA',
+          card_icon: 'layers',
+          is_favorite: 0,
+          sort_order: 0,
+          assignee_id: ingridUser.id,
+          author: ingridUser,
+          tags: ['ctag_urgente', 'ctag_publicar'],
+        },
+        {
+          id: 'citm_seed_4',
+          title: 'Post: apresentação de novo case de portfólio',
+          body_html: '<p>Mostrar antes e depois da identidade visual com foco na transformação de percepção de valor da marca.</p>',
+          column_id: 'ccol_revisao',
+          folder_id: 'cfld_portfolio',
+          theme_id: 'cthm_portfolio',
+          card_color: '#FCF6EC',
+          card_icon: 'sparkles',
+          is_favorite: 0,
+          sort_order: 0,
+          assignee_id: marianaUser.id,
+          author: marianaUser,
+          tags: ['ctag_revisar', 'ctag_aprovacao'],
+        },
+        {
+          id: 'citm_seed_5',
+          title: 'Campanha: abertura de vagas do mês',
+          body_html: '<p>Sequência de 3 stories + post estático destacando os pacotes de gestão e identidade visual disponíveis.</p>',
+          column_id: 'ccol_aprovados',
+          folder_id: 'cfld_campanhas',
+          theme_id: 'cthm_vendas',
+          card_color: '#DAD994',
+          card_icon: 'megaphone',
+          is_favorite: 0,
+          sort_order: 0,
+          assignee_id: ingridUser.id,
+          author: ingridUser,
+          tags: ['ctag_cliente_novo'],
+        },
+      ];
+
+      const insItem = db.prepare(`
+        INSERT OR IGNORE INTO content_items (
+          id, title, body_html, column_id, folder_id, theme_id, card_color, card_icon,
+          is_favorite, is_draft, sort_order, assignee_id,
+          created_by_id, created_by_name, updated_by_id, updated_by_name, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      const insItemTag = db.prepare('INSERT OR IGNORE INTO content_item_tags (content_id, tag_id) VALUES (?, ?)');
+
+      for (const item of starterItems) {
+        insItem.run(
+          item.id,
+          item.title,
+          item.body_html,
+          item.column_id,
+          item.folder_id,
+          item.theme_id,
+          item.card_color,
+          item.card_icon,
+          item.is_favorite,
+          item.sort_order,
+          item.assignee_id,
+          item.author.id,
+          item.author.name,
+          item.author.id,
+          item.author.name,
+          nowContents,
+          nowContents
+        );
+        for (const tid of item.tags) {
+          insItemTag.run(item.id, tid);
+        }
+      }
+    }
+
+    db.prepare('INSERT OR REPLACE INTO studio_settings (key, value_json, updated_at) VALUES (?, ?, ?)').run(
+      'contents_seeded_v1',
+      JSON.stringify({ seeded: true }),
+      nowContents
+    );
+  }
+
   // Migrate default_columns to the 4 standard columns (Comece aqui, Em produção, Aprovação, Concluídos) without "Alteração"
   const defaultColsSetting = db
     .prepare("SELECT value_json FROM studio_settings WHERE key = 'default_columns'")

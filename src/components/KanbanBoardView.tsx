@@ -39,7 +39,17 @@ import {
   Clock,
   SlidersHorizontal,
 } from 'lucide-react';
-import { api, BOARD_COVER_PRESETS, copyTextSafe, formatShortDateBR, uploadFile } from '../lib/api.ts';
+import {
+  api,
+  BOARD_COVER_PRESETS,
+  buildClientPinLoginUrl,
+  buildMailtoShareUrl,
+  buildWhatsAppShareUrl,
+  copyTextSafe,
+  formatShortDateBR,
+  getPublicPortalBaseUrl,
+  uploadFile,
+} from '../lib/api.ts';
 import {
   Board,
   BoardColumn,
@@ -95,6 +105,9 @@ interface BoardAccessInfo {
   client_id: string;
   client_name: string;
   client_email: string;
+  client_phone?: string;
+  client_portal_token?: string | null;
+  client_portal_pin?: string | null;
   portal_enabled: boolean;
   shared_with_client: boolean;
   share_token: string | null;
@@ -939,7 +952,7 @@ export function KanbanBoardView({
 
   const shareUrl =
     accessInfo?.share_token && typeof window !== 'undefined'
-      ? `${window.location.origin}/?board=${accessInfo.share_token}`
+      ? `${getPublicPortalBaseUrl()}/?board=${accessInfo.share_token}`
       : '';
 
   const serviceOptions = Array.from(
@@ -2010,35 +2023,94 @@ export function KanbanBoardView({
                     </span>
                   </div>
 
-                  {shareUrl && (
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        readOnly
-                        value={shareUrl}
-                        className="flex-1 px-3 py-1.5 rounded-xl border border-black/10 bg-white text-[11px] text-[#232122]/80"
-                      />
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const ok = await copyTextSafe(shareUrl);
-                          if (ok) {
-                            setCopiedBoardLink(true);
-                            setTimeout(() => setCopiedBoardLink(false), 2000);
-                          }
-                        }}
-                        className="px-3 py-1.5 rounded-xl bg-[#2F1534] text-white text-[11px] font-semibold inline-flex items-center gap-1 shrink-0"
-                      >
-                        {copiedBoardLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                        <span>{copiedBoardLink ? 'Copiado!' : 'Copiar link'}</span>
-                      </button>
-                    </div>
-                  )}
+                  {(() => {
+                    const clientEmail = accessInfo.client_email || inviteEmail;
+                    const clientPin = accessInfo.client_portal_pin || '------';
+                    const pinPortalUrl = buildClientPinLoginUrl(clientEmail);
+                    const msg = [
+                      `Olá, ${accessInfo.client_name}! Acesse o seu Portal do Cliente no Aumi Studio para acompanhar o projeto "${accessInfo.board_title}":`,
+                      ``,
+                      `Link: ${pinPortalUrl}`,
+                      `E-mail: ${clientEmail}`,
+                      `PIN de acesso: ${clientPin}`,
+                    ].join('\n');
+                    const whatsappHref = buildWhatsAppShareUrl(accessInfo.client_phone, msg);
+                    const mailtoHref = buildMailtoShareUrl(
+                      clientEmail,
+                      `Acesso ao Portal do Cliente — ${accessInfo.board_title}`,
+                      msg
+                    );
+                    return (
+                      <div className="space-y-2.5 pt-1">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div className="px-3 py-2 rounded-xl bg-white border border-black/10">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#7A689C] block">
+                              E-mail do cliente
+                            </span>
+                            <p className="text-xs font-semibold text-[#2F1534] truncate mt-0.5 select-all">
+                              {clientEmail}
+                            </p>
+                          </div>
+                          <div className="px-3 py-2 rounded-xl bg-[#FDF2F6] border border-[#EC97B7]/45">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#EC2B82] block">
+                              PIN de acesso
+                            </span>
+                            <p className="text-base font-mono font-extrabold tracking-[0.22em] text-[#2F1534] mt-0.5 select-all">
+                              {clientPin}
+                            </p>
+                          </div>
+                        </div>
+
+                        <p className="text-[11px] text-[#2F1534]/70">
+                          Link do Portal do Cliente (o cliente entra com o e-mail + PIN acima e só vê a parte dele):
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            readOnly
+                            value={pinPortalUrl}
+                            className="flex-1 px-3 py-1.5 rounded-xl border border-black/10 bg-white text-[11px] font-mono text-[#232122]/80 select-all"
+                          />
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const ok = await copyTextSafe(msg);
+                              if (ok) {
+                                setCopiedBoardLink(true);
+                                setTimeout(() => setCopiedBoardLink(false), 2200);
+                              }
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-[#2F1534] hover:bg-[#EC2B82] text-white text-[11px] font-semibold inline-flex items-center gap-1 shrink-0 transition-colors"
+                          >
+                            {copiedBoardLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                            <span>{copiedBoardLink ? 'Copiado!' : 'Copiar Link + PIN'}</span>
+                          </button>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                          <a
+                            href={whatsappHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 rounded-xl bg-[#F4F5E2] hover:bg-[#E7E9C4] border border-[#C8C978] text-[#3E4113] text-[11px] font-semibold inline-flex items-center gap-1.5"
+                          >
+                            <span>Enviar por WhatsApp</span>
+                          </a>
+                          <a
+                            href={mailtoHref}
+                            className="px-3 py-1.5 rounded-xl bg-[#FDF2F6] hover:bg-[#FADCE9] border border-[#F4C2D8] text-[#EC2B82] text-[11px] font-semibold inline-flex items-center gap-1.5"
+                          >
+                            <span>Enviar por E-mail</span>
+                          </a>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-[#232122]/75">E-mail de acesso do cliente</label>
+                <label className="text-xs font-medium text-[#232122]/75">E-mail do cliente</label>
                 <input
                   type="email"
                   required
@@ -2051,15 +2123,14 @@ export function KanbanBoardView({
 
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-[#232122]/75">
-                  {accessInfo?.has_login ? 'Redefinir senha (opcional)' : 'Senha inicial de acesso *'}
+                  Senha opcional (não obrigatória — o cliente já entra com E-mail + PIN)
                 </label>
                 <input
                   type="password"
                   minLength={6}
-                  required={!accessInfo?.has_login}
                   value={invitePassword}
                   onChange={(e) => setInvitePassword(e.target.value)}
-                  placeholder={accessInfo?.has_login ? 'Deixe vazio para manter a senha atual' : 'Mínimo 6 caracteres'}
+                  placeholder="Opcional — deixe vazio para usar apenas E-mail + PIN"
                   className="w-full px-3.5 py-2 rounded-xl border border-black/12 text-sm bg-white"
                 />
               </div>

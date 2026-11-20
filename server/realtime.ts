@@ -26,7 +26,8 @@ export interface RealtimeEventPayload {
     | 'portal_activity'
     | 'chat_message_created'
     | 'chat_message_deleted'
-    | 'postit_updated';
+    | 'postit_updated'
+    | 'contents_updated';
   actorId?: string;
   scope?: string;
   boardId?: string | null;

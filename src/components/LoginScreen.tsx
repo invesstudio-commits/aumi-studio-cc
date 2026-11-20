@@ -17,7 +17,7 @@ import {
   Calendar,
   Mail,
 } from 'lucide-react';
-import { api, setAuthToken } from '../lib/api.ts';
+import { api, setAuthToken, setClientPortalToken } from '../lib/api.ts';
 import { signInWithGoogleForAumi } from '../lib/firebaseAuth.ts';
 import { User } from '../types/aumi.ts';
 import { AumiWordmark, AumiLogoMark, GlassFolderGraphic } from './AumiBrand.tsx';
@@ -26,6 +26,8 @@ interface LoginScreenProps {
   onLoginSuccess: (user: User) => void;
   hasSharedCopyLink?: boolean;
   hasSharedBoardLink?: boolean;
+  clientOnlyMode?: boolean;
+  initialClientEmail?: string | null;
 }
 
 const LOGIN_PREFS_STORAGE_KEY = 'aumi_login_remember_prefs_v1';
@@ -86,13 +88,16 @@ export function LoginScreen({
   onLoginSuccess,
   hasSharedCopyLink = false,
   hasSharedBoardLink = false,
+  clientOnlyMode = false,
+  initialClientEmail = null,
 }: LoginScreenProps) {
   const [audience, setAudience] = useState<'team' | 'client'>(
-    hasSharedBoardLink || hasSharedCopyLink ? 'client' : 'team'
+    clientOnlyMode || hasSharedBoardLink || hasSharedCopyLink ? 'client' : 'team'
   );
   const [mode, setMode] = useState<'login' | 'forgot' | 'reset'>('login');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(initialClientEmail || '');
   const [password, setPassword] = useState('');
+  const [clientPin, setClientPin] = useState('');
   const [rememberAccess, setRememberAccess] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [resetCode, setResetCode] = useState('');
@@ -107,13 +112,18 @@ export function LoginScreen({
 
   // Restore remembered email & audience preference on mount
   useEffect(() => {
+    if (clientOnlyMode) {
+      setAudience('client');
+      if (initialClientEmail) setEmail(initialClientEmail);
+      return;
+    }
     try {
       const raw = window.localStorage.getItem(LOGIN_PREFS_STORAGE_KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw) as { email?: string; audience?: 'team' | 'client'; remember?: boolean };
       if (parsed.remember) {
         setRememberAccess(true);
-        if (parsed.email) setEmail(parsed.email);
+        if (parsed.email && !initialClientEmail) setEmail(parsed.email);
         if (parsed.audience && !hasSharedBoardLink && !hasSharedCopyLink) {
           setAudience(parsed.audience);
         }
@@ -121,9 +131,10 @@ export function LoginScreen({
     } catch {
       // ignore storage errors
     }
-  }, [hasSharedBoardLink, hasSharedCopyLink]);
+  }, [hasSharedBoardLink, hasSharedCopyLink, clientOnlyMode, initialClientEmail]);
 
   function persistRememberChoice(targetEmail: string, targetAudience: 'team' | 'client', shouldRemember: boolean) {
+    if (clientOnlyMode) return;
     try {
       if (shouldRemember && targetEmail.trim()) {
         window.localStorage.setItem(
@@ -142,6 +153,29 @@ export function LoginScreen({
     e.preventDefault();
     setError('');
     setSuccessMsg('');
+
+    if (audience === 'client') {
+      const cleanPin = clientPin.replace(/\D/g, '').trim();
+      if (!email.trim() || cleanPin.length < 4) {
+        setError('Informe seu e-mail cadastrado e o PIN numérico de 4 a 6 dígitos.');
+        return;
+      }
+      setLoading(true);
+      try {
+        const res = await api<{ token: string; user: User }>('/auth/client-pin-login', {
+          method: 'POST',
+          body: JSON.stringify({ email: email.trim(), pin: cleanPin }),
+        });
+        setClientPortalToken(res.token);
+        onLoginSuccess(res.user);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Não foi possível acessar seu portal.');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     if (!email.trim() || !password) {
       setError('Preencha seu e-mail e senha para entrar.');
       return;
@@ -292,43 +326,52 @@ export function LoginScreen({
             <div className="flex items-center gap-2">
               <AumiLogoMark size={18} />
               <span className="text-xs font-bold text-[#2F1534]">Aumi Studio</span>
-              <span className="hidden sm:inline text-xs text-[#7A689C]">· Acesso ao Sistema</span>
+              <span className="hidden sm:inline text-xs text-[#7A689C]">
+                {clientOnlyMode ? '· Portal Exclusivo do Cliente' : '· Acesso ao Sistema'}
+              </span>
             </div>
           </div>
 
-          {/* macOS Segmented Glass Control: Equipe Aumi / Cliente */}
-          <div className="inline-flex p-1 rounded-2xl aumi-liquid-control">
-            <button
-              type="button"
-              onClick={() => {
-                setAudience('team');
-                setError('');
-              }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
-                audience === 'team'
-                  ? 'bg-gradient-to-r from-[#2F1534] to-[#7A689C] text-white shadow-sm'
-                  : 'text-[#2F1534]/70 hover:text-[#2F1534]'
-              }`}
-            >
-              <ShieldCheck className={`w-3.5 h-3.5 ${audience === 'team' ? 'text-[#DAD994]' : 'text-[#EC2B82]'}`} />
-              <span>Equipe Aumi</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setAudience('client');
-                setError('');
-              }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
-                audience === 'client'
-                  ? 'bg-gradient-to-r from-[#EC2B82] to-[#E1754C] text-white shadow-sm'
-                  : 'text-[#2F1534]/70 hover:text-[#2F1534]'
-              }`}
-            >
-              <Users className={`w-3.5 h-3.5 ${audience === 'client' ? 'text-[#FCF6EC]' : 'text-[#7A689C]'}`} />
+          {/* macOS Segmented Glass Control: Equipe Aumi / Cliente (hidden in exclusive client link mode) */}
+          {clientOnlyMode ? (
+            <span className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#EC2B82] to-[#E1754C] text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm whitespace-nowrap shrink-0">
+              <Users className="w-3.5 h-3.5 text-[#FCF6EC]" />
               <span>Portal do Cliente</span>
-            </button>
-          </div>
+            </span>
+          ) : (
+            <div className="inline-flex p-1 rounded-2xl aumi-liquid-control">
+              <button
+                type="button"
+                onClick={() => {
+                  setAudience('team');
+                  setError('');
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+                  audience === 'team'
+                    ? 'bg-gradient-to-r from-[#2F1534] to-[#7A689C] text-white shadow-sm'
+                    : 'text-[#2F1534]/70 hover:text-[#2F1534]'
+                }`}
+              >
+                <ShieldCheck className={`w-3.5 h-3.5 ${audience === 'team' ? 'text-[#DAD994]' : 'text-[#EC2B82]'}`} />
+                <span>Equipe Aumi</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAudience('client');
+                  setError('');
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
+                  audience === 'client'
+                    ? 'bg-gradient-to-r from-[#EC2B82] to-[#E1754C] text-white shadow-sm'
+                    : 'text-[#2F1534]/70 hover:text-[#2F1534]'
+                }`}
+              >
+                <Users className={`w-3.5 h-3.5 ${audience === 'client' ? 'text-[#FCF6EC]' : 'text-[#7A689C]'}`} />
+                <span>Portal do Cliente</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Window Split Body */}
@@ -433,7 +476,7 @@ export function LoginScreen({
                     {mode === 'login' &&
                       (audience === 'team'
                         ? 'Selecione seu perfil abaixo ou entre com sua conta da equipe.'
-                        : 'Use seu e-mail e senha para acompanhar demandas, mural e aprovações.')}
+                        : 'Digite seu e-mail e o PIN numérico de 4 a 6 dígitos enviado pelo estúdio.')}
                     {mode === 'forgot' && 'Informe o e-mail cadastrado para gerar seu código de verificação.'}
                     {mode === 'reset' && 'Digite o código de 6 dígitos recebido e escolha uma nova senha.'}
                   </p>
@@ -454,7 +497,7 @@ export function LoginScreen({
                 <div className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-[#FDF2F6]/90 border border-[#EC97B7]/65 text-xs text-[#2F1534] shadow-xs">
                   <Lock className="w-4 h-4 text-[#EC2B82] shrink-0 mt-0.5" />
                   <span>
-                    Você recebeu um convite para acessar seu quadro de entregas no Aumi Studio. Entre com seu e-mail e senha para abrir o projeto.
+                    Você recebeu um convite para acessar seu quadro de entregas no Aumi Studio. Informe seu e-mail e PIN de acesso para abrir o projeto.
                   </span>
                 </div>
               )}
@@ -565,66 +608,96 @@ export function LoginScreen({
                       </div>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <label htmlFor="login-password" className="block text-xs font-bold text-[#2F1534]">
-                          Senha
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setMode('forgot');
-                            setError('');
-                            setSuccessMsg('');
-                          }}
-                          className="text-xs font-semibold text-[#7A689C] hover:text-[#EC2B82] transition-colors"
-                        >
-                          Redefinir / Esqueci minha senha
-                        </button>
+                    {audience === 'client' ? (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <label htmlFor="login-client-pin" className="block text-xs font-bold text-[#2F1534]">
+                            PIN de acesso (4 a 6 números)
+                          </label>
+                          <span className="text-[11px] font-medium text-[#7A689C]">Enviado pelo estúdio</span>
+                        </div>
+                        <div className="relative">
+                          <KeyRound className="w-4 h-4 text-[#EC2B82] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <input
+                            id="login-client-pin"
+                            type="text"
+                            inputMode="numeric"
+                            autoComplete="one-time-code"
+                            maxLength={6}
+                            value={clientPin}
+                            onChange={(e) => setClientPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                            placeholder="Ex: 482915"
+                            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[#7A689C]/20 bg-white/95 text-base font-mono font-bold tracking-[0.25em] text-[#2F1534] placeholder:text-[#232122]/30 placeholder:tracking-normal placeholder:font-sans placeholder:font-normal focus:outline-none focus:border-[#EC2B82] focus:ring-2 focus:ring-[#EC97B7]/35 transition-all"
+                          />
+                        </div>
+                        <p className="text-[11px] text-[#7A689C]">
+                          Você terá acesso exclusivo aos seus projetos, aprovações e arquivos no Aumi Studio.
+                        </p>
                       </div>
-                      <div className="relative">
-                        <Lock className="w-4 h-4 text-[#EC2B82] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                        <input
-                          ref={passwordInputRef}
-                          id="login-password"
-                          type={showPassword ? 'text' : 'password'}
-                          autoComplete="current-password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          placeholder={selectedPartner ? `Digite a senha de ${selectedPartner.name}` : 'Digite sua senha'}
-                          className="w-full pl-10 pr-11 py-2.5 rounded-xl border border-[#7A689C]/20 bg-white/95 text-sm text-[#232122] placeholder:text-[#232122]/35 focus:outline-none focus:border-[#EC2B82] focus:ring-2 focus:ring-[#EC97B7]/35 transition-all"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword((v) => !v)}
-                          aria-label={showPassword ? 'Ocultar senha' : 'Visualizar senha'}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[#7A689C] hover:text-[#2F1534] transition-colors"
-                        >
-                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <label htmlFor="login-password" className="block text-xs font-bold text-[#2F1534]">
+                            Senha
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMode('forgot');
+                              setError('');
+                              setSuccessMsg('');
+                            }}
+                            className="text-xs font-semibold text-[#7A689C] hover:text-[#EC2B82] transition-colors"
+                          >
+                            Redefinir / Esqueci minha senha
+                          </button>
+                        </div>
+                        <div className="relative">
+                          <Lock className="w-4 h-4 text-[#EC2B82] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <input
+                            ref={passwordInputRef}
+                            id="login-password"
+                            type={showPassword ? 'text' : 'password'}
+                            autoComplete="current-password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder={selectedPartner ? `Digite a senha de ${selectedPartner.name}` : 'Digite sua senha'}
+                            className="w-full pl-10 pr-11 py-2.5 rounded-xl border border-[#7A689C]/20 bg-white/95 text-sm text-[#232122] placeholder:text-[#232122]/35 focus:outline-none focus:border-[#EC2B82] focus:ring-2 focus:ring-[#EC97B7]/35 transition-all"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword((v) => !v)}
+                            aria-label={showPassword ? 'Ocultar senha' : 'Visualizar senha'}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[#7A689C] hover:text-[#2F1534] transition-colors"
+                          >
+                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    )}
 
-                    {/* Remember access option */}
-                    <div className="flex items-center justify-between pt-0.5">
-                      <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={rememberAccess}
-                          onChange={(e) => {
-                            const next = e.target.checked;
-                            setRememberAccess(next);
-                            if (!next) {
-                              persistRememberChoice('', audience, false);
-                            }
-                          }}
-                          className="w-4 h-4 rounded border-[#7A689C]/40 accent-[#EC2B82] cursor-pointer"
-                        />
-                        <span className="text-xs font-medium text-[#2F1534]/80">
-                          Lembrar meu perfil neste dispositivo
-                        </span>
-                      </label>
-                    </div>
+                    {/* Remember access option (partners only) */}
+                    {audience === 'team' && (
+                      <div className="flex items-center justify-between pt-0.5">
+                        <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={rememberAccess}
+                            onChange={(e) => {
+                              const next = e.target.checked;
+                              setRememberAccess(next);
+                              if (!next) {
+                                persistRememberChoice('', audience, false);
+                              }
+                            }}
+                            className="w-4 h-4 rounded border-[#7A689C]/40 accent-[#EC2B82] cursor-pointer"
+                          />
+                          <span className="text-xs font-medium text-[#2F1534]/80">
+                            Lembrar meu perfil neste dispositivo
+                          </span>
+                        </label>
+                      </div>
+                    )}
                   </div>
 
                   {/* Primary Liquid Glass Submit Button */}
@@ -640,7 +713,9 @@ export function LoginScreen({
                     <span>
                       {loading
                         ? 'Entrando...'
-                        : selectedPartner && audience === 'team'
+                        : audience === 'client'
+                        ? 'Acessar meu Portal do Cliente'
+                        : selectedPartner
                         ? `Entrar como ${selectedPartner.name}`
                         : 'Entrar no Aumi Studio'}
                     </span>

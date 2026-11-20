@@ -22,6 +22,7 @@ import {
   Maximize2,
   Minimize2,
   MoveHorizontal,
+  PenTool,
 } from 'lucide-react';
 import { api, formatCopyStatusPT, formatRelativeTime } from '../lib/api.ts';
 import { playNotificationPop } from '../lib/sounds.ts';
@@ -88,6 +89,14 @@ const NAV_APPS: Array<{
     icon: Users,
     gradient: 'from-[#F4B6CE] to-[#EC2B82]',
     iconColor: 'text-white',
+  },
+  {
+    id: 'conteudos',
+    label: 'Conteúdos',
+    shortLabel: 'Conteúdos',
+    icon: PenTool,
+    gradient: 'from-white to-[#FFF7FB] border border-[#F5C6DE]',
+    iconColor: 'text-[#EC2B82]',
   },
   {
     id: 'financeiro',
@@ -923,8 +932,8 @@ export function StudioLayout({
               </button>
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
-              {(['servicos', 'sociedade', 'configuracoes'] as MainTab[]).map((tabId) => {
+            <div className="grid grid-cols-2 gap-2">
+              {(['conteudos', 'servicos', 'sociedade', 'configuracoes'] as MainTab[]).map((tabId) => {
                 const app = NAV_APPS.find((a) => a.id === tabId)!;
                 const Icon = app.icon;
                 const active = activeTab === tabId;

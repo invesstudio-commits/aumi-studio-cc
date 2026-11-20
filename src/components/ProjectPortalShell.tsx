@@ -1920,17 +1920,17 @@ export function ProjectPortalShell({
                     </button>
                   </div>
                   {!collapsedSections.complementar && (
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 divide-y lg:divide-y-0 lg:divide-x divide-[#7A689C]/12">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-0">
                     {/* Evolução & Sinais */}
-                    <div className="lg:col-span-4 space-y-3">
+                    <div className="lg:col-span-4 lg:pr-6 lg:border-r lg:border-[#7A689C]/12 space-y-3 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#7A689C] to-[#BC9FE6] text-white flex items-center justify-center">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#7A689C] to-[#BC9FE6] text-white flex items-center justify-center shrink-0">
                             <Layers className="w-3.5 h-3.5" />
                           </span>
-                          <h3 className="text-sm font-extrabold text-[#2F1534]">Evolução das Entregas</h3>
+                          <h3 className="text-sm font-extrabold text-[#2F1534] truncate">Evolução das Entregas</h3>
                         </div>
-                        <span className="text-lg font-extrabold text-[#EC2B82] tabular-nums">
+                        <span className="text-lg font-extrabold text-[#EC2B82] tabular-nums shrink-0">
                           {overallProgressPct}%
                         </span>
                       </div>
@@ -1942,13 +1942,13 @@ export function ProjectPortalShell({
                         />
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 text-xs tabular-nums">
+                      <div className="grid grid-cols-2 gap-2.5 text-xs tabular-nums">
                         <button
                           type="button"
                           onClick={() => navigateSection('demandas')}
-                          className="p-2.5 rounded-xl bg-[#FAF7FC] hover:bg-[#F3ECF9] text-left transition-colors"
+                          className="p-2.5 rounded-xl bg-[#FAF7FC] hover:bg-[#F3ECF9] text-left transition-colors min-w-0"
                         >
-                          <p className="text-[10.5px] font-semibold text-[#7A689C]">Demandas concluídas</p>
+                          <p className="text-[10.5px] font-semibold text-[#7A689C] truncate">Demandas concluídas</p>
                           <p className="text-sm font-extrabold text-[#2F1534] mt-0.5">
                             {completedDemandsCount} / {totalDemandsCount}
                           </p>
@@ -1956,9 +1956,9 @@ export function ProjectPortalShell({
                         <button
                           type="button"
                           onClick={() => navigateSection('processo')}
-                          className="p-2.5 rounded-xl bg-[#FDF2F6]/80 hover:bg-[#FDF2F6] text-left transition-colors"
+                          className="p-2.5 rounded-xl bg-[#FDF2F6]/80 hover:bg-[#FDF2F6] text-left transition-colors min-w-0"
                         >
-                          <p className="text-[10.5px] font-semibold text-[#EC2B82]">Etapas do processo</p>
+                          <p className="text-[10.5px] font-semibold text-[#EC2B82] truncate">Etapas do processo</p>
                           <p className="text-sm font-extrabold text-[#2F1534] mt-0.5">
                             {completedProcessCount} / {effectiveProcessSteps.length}
                           </p>
@@ -1981,18 +1981,18 @@ export function ProjectPortalShell({
                     </div>
 
                     {/* Próximos Prazos */}
-                    <div className="lg:col-span-4 pt-4 lg:pt-0 lg:pl-5 space-y-3">
+                    <div className="lg:col-span-4 pt-5 border-t border-[#7A689C]/12 lg:pt-0 lg:border-t-0 lg:px-6 lg:border-r lg:border-[#7A689C]/12 space-y-3 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#E1754C] to-[#DAD994] text-[#2F1534] flex items-center justify-center">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#E1754C] to-[#DAD994] text-[#2F1534] flex items-center justify-center shrink-0">
                             <CalendarIcon className="w-3.5 h-3.5" />
                           </span>
-                          <h3 className="text-sm font-extrabold text-[#2F1534]">Próximos Prazos</h3>
+                          <h3 className="text-sm font-extrabold text-[#2F1534] truncate">Próximos Prazos</h3>
                         </div>
                         <button
                           type="button"
                           onClick={() => navigateSection('calendario')}
-                          className="text-xs font-bold text-[#EC2B82] hover:underline"
+                          className="text-xs font-bold text-[#EC2B82] hover:underline shrink-0"
                         >
                           Calendário →
                         </button>
@@ -2025,15 +2025,15 @@ export function ProjectPortalShell({
                     </div>
 
                     {/* Pastas & Documentos Rápidos */}
-                    <div className="lg:col-span-4 pt-4 lg:pt-0 lg:pl-5 space-y-3">
+                    <div className="lg:col-span-4 pt-5 border-t border-[#7A689C]/12 lg:pt-0 lg:border-t-0 lg:pl-6 space-y-3 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#EC2B82] to-[#EC97B7] text-white flex items-center justify-center">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#EC2B82] to-[#EC97B7] text-white flex items-center justify-center shrink-0">
                             <FolderIcon className="w-3.5 h-3.5" />
                           </span>
-                          <h3 className="text-sm font-extrabold text-[#2F1534]">Pastas do Projeto</h3>
+                          <h3 className="text-sm font-extrabold text-[#2F1534] truncate">Pastas do Projeto</h3>
                         </div>
-                        <span className="text-[11px] font-semibold text-[#7A689C] tabular-nums">
+                        <span className="text-[11px] font-semibold text-[#7A689C] tabular-nums shrink-0">
                           {allAttachments.length} arquivos
                         </span>
                       </div>

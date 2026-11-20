@@ -13,6 +13,14 @@ export function signToken(userId: string): string {
   return jwt.sign({ sub: userId }, JWT_SECRET, { expiresIn: '14d' });
 }
 
+export function signClientLinkToken(userId: string, clientId: string, portalToken: string): string {
+  return jwt.sign(
+    { sub: userId, scope: 'client_portal', client_id: clientId, ptk: portalToken },
+    JWT_SECRET,
+    { expiresIn: '30d' }
+  );
+}
+
 export function sanitizeUser(row: DbUser): SafeUser {
   let perms: PartnerPermissions = { ...DEFAULT_PARTNER_PERMISSIONS };
   try {
@@ -59,12 +67,44 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
   }
 
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as { sub: string };
+    const payload = jwt.verify(token, JWT_SECRET) as {
+      sub: string;
+      scope?: string;
+      client_id?: string;
+      ptk?: string;
+    };
     const userRow = db.prepare('SELECT * FROM users WHERE id = ? AND active = 1').get(payload.sub) as DbUser | undefined;
     if (!userRow) {
       res.status(401).json({ error: 'Usuária ou conta inativa.' });
       return;
     }
+
+    // Strict client portal isolation & live link-revocation check
+    if (payload.scope === 'client_portal' || userRow.role === 'client') {
+      if (userRow.role !== 'client' || !userRow.client_id) {
+        res.status(403).json({ error: 'Acesso inválido ao portal do cliente.' });
+        return;
+      }
+      if (payload.client_id && payload.client_id !== userRow.client_id) {
+        res.status(403).json({ error: 'Este link não corresponde à conta autenticada.' });
+        return;
+      }
+      const clientRow = db
+        .prepare('SELECT id, portal_enabled, portal_token, status FROM clients WHERE id = ?')
+        .get(userRow.client_id) as
+        | { id: string; portal_enabled: number; portal_token: string | null; status: string }
+        | undefined;
+
+      if (!clientRow || !clientRow.portal_enabled || clientRow.status === 'archived') {
+        res.status(403).json({ error: 'O acesso a este Portal do Cliente foi desativado pelo estúdio.' });
+        return;
+      }
+      if (payload.ptk && clientRow.portal_token && payload.ptk !== clientRow.portal_token) {
+        res.status(401).json({ error: 'Este link de acesso foi atualizado. Solicite o novo link ao estúdio.' });
+        return;
+      }
+    }
+
     req.user = sanitizeUser(userRow);
     next();
   } catch {

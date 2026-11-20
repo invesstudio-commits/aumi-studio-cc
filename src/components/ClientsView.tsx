@@ -17,8 +17,23 @@ import {
   Check,
   Sparkles,
   UserCheck,
+  Copy,
+  Link2,
+  MessageCircle,
+  RefreshCw,
 } from 'lucide-react';
-import { api, FOLDER_COLOR_PRESETS, formatBRL, formatDateBR, formatRelativeTime, uploadFile } from '../lib/api.ts';
+import {
+  api,
+  buildClientPinLoginUrl,
+  buildMailtoShareUrl,
+  buildWhatsAppShareUrl,
+  copyTextSafe,
+  FOLDER_COLOR_PRESETS,
+  formatBRL,
+  formatDateBR,
+  formatRelativeTime,
+  uploadFile,
+} from '../lib/api.ts';
 import { Board, Client, CopyItem, FinanceEntry, PartnerKey, Service, StudioSettings, User } from '../types/aumi.ts';
 import { MacWindow } from './MacWindow.tsx';
 import { PartnerAvatar } from './AumiBrand.tsx';
@@ -102,6 +117,13 @@ export function ClientsView({
   const [credPassword, setCredPassword] = useState('');
   const [credActive, setCredActive] = useState(true);
   const [credFeedback, setCredFeedback] = useState('');
+  const [copiedPortalLink, setCopiedPortalLink] = useState(false);
+  const [copiedAccessData, setCopiedAccessData] = useState(false);
+  const [regeneratingPin, setRegeneratingPin] = useState(false);
+  const [editingPin, setEditingPin] = useState(false);
+  const [pinDraft, setPinDraft] = useState('');
+  const [savingPin, setSavingPin] = useState(false);
+  const [pinError, setPinError] = useState('');
 
   // Copy modal inside client CRM
   const [copyModalOpen, setCopyModalOpen] = useState(false);
@@ -324,6 +346,48 @@ export function ClientsView({
     });
     await loadBase();
     if (selectedClientId === cli.id) await loadClientDetail(cli.id);
+  }
+
+  async function handleRegenerateClientPin(cli: Client) {
+    setRegeneratingPin(true);
+    setPinError('');
+    try {
+      await api(`/clients/${cli.id}/pin`, {
+        method: 'POST',
+        body: JSON.stringify({ regenerate: true }),
+      });
+      setEditingPin(false);
+      await loadBase();
+      if (selectedClientId === cli.id) await loadClientDetail(cli.id);
+    } catch (err) {
+      setPinError(err instanceof Error ? err.message : 'Erro ao gerar novo PIN.');
+    } finally {
+      setRegeneratingPin(false);
+    }
+  }
+
+  async function handleSaveCustomPin(cli: Client) {
+    const clean = pinDraft.replace(/\D/g, '');
+    if (clean.length < 4 || clean.length > 6) {
+      setPinError('Digite um PIN numérico entre 4 e 6 dígitos.');
+      return;
+    }
+    setSavingPin(true);
+    setPinError('');
+    try {
+      await api(`/clients/${cli.id}/pin`, {
+        method: 'POST',
+        body: JSON.stringify({ pin: clean }),
+      });
+      setEditingPin(false);
+      setPinDraft('');
+      await loadBase();
+      if (selectedClientId === cli.id) await loadClientDetail(cli.id);
+    } catch (err) {
+      setPinError(err instanceof Error ? err.message : 'Erro ao salvar PIN.');
+    } finally {
+      setSavingPin(false);
+    }
   }
 
   const filteredClients = clients.filter((c) => {
@@ -586,21 +650,21 @@ export function ClientsView({
                   )}
                 </div>
 
-                {/* External Access Control */}
-                <div className="aumi-surface-solid rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="space-y-0.5">
-                    <p className="text-xs font-semibold text-[#2F1534]">Acesso ao Portal Externo do Cliente</p>
-                    <p className="text-[11px] text-[#232122]/60">
-                      Login: <span className="font-mono">{activeClient.login_email || activeClient.email}</span> ·{' '}
-                      <strong className={activeClient.has_login ? 'text-[#3E4113]' : 'text-[#E1754C]'}>
-                        {activeClient.has_login ? 'Senha configurada' : 'Sem senha criada'}
-                      </strong>
-                    </p>
-                  </div>
+                {/* External Access Control + E-mail & PIN Portal Access */}
+                <div className="aumi-surface-solid rounded-2xl p-4 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="space-y-0.5">
+                      <p className="text-xs font-semibold text-[#2F1534] inline-flex items-center gap-1.5">
+                        <KeyRound className="w-3.5 h-3.5 text-[#EC2B82]" />
+                        <span>Acesso do Cliente (E-mail + PIN)</span>
+                      </p>
+                      <p className="text-[11px] text-[#232122]/60">
+                        Envie o link e o PIN abaixo. {activeClient.name} entra direto e só visualiza o próprio portal.
+                      </p>
+                    </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    {canManage && (
-                      <>
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      {canManage && (
                         <button
                           type="button"
                           onClick={() => handleTogglePortalAccess(activeClient)}
@@ -613,23 +677,179 @@ export function ClientsView({
                           {activeClient.portal_enabled ? <Globe className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
                           <span>{activeClient.portal_enabled ? 'Portal ativo' : 'Portal desativado'}</span>
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCredClient(activeClient);
-                            setCredEmail(activeClient.login_email || activeClient.email);
-                            setCredPassword('');
-                            setCredActive(activeClient.login_active !== false);
-                            setCredFeedback('');
-                          }}
-                          className="px-3 py-1.5 rounded-xl bg-[#FCF6EC] hover:bg-[#F3ECF9] border border-black/10 text-xs font-semibold text-[#2F1534] inline-flex items-center gap-1.5"
-                        >
-                          <KeyRound className="w-3.5 h-3.5 text-[#7A689C]" />
-                          <span>{activeClient.has_login ? 'Credenciais' : 'Criar senha'}</span>
-                        </button>
-                      </>
-                    )}
+                      )}
+                    </div>
                   </div>
+
+                  {(() => {
+                    const clientAccessEmail = activeClient.login_email || activeClient.email;
+                    const clientPin = activeClient.portal_pin || '------';
+                    const portalUrl = buildClientPinLoginUrl(clientAccessEmail);
+                    const accessText = [
+                      `Olá, ${activeClient.name}! Aqui está o acesso exclusivo ao seu Portal do Cliente no Aumi Studio:`,
+                      ``,
+                      `Link: ${portalUrl}`,
+                      `E-mail: ${clientAccessEmail}`,
+                      `PIN de acesso: ${clientPin}`,
+                    ].join('\n');
+                    const whatsappHref = buildWhatsAppShareUrl(activeClient.phone, accessText);
+                    const mailtoHref = buildMailtoShareUrl(
+                      clientAccessEmail,
+                      `Seu acesso ao Portal do Cliente — Aumi Studio`,
+                      accessText
+                    );
+
+                    return (
+                      <div className="pt-2.5 border-t border-black/[0.06] space-y-3">
+                        {/* E-mail + PIN Summary Cards */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          <div className="px-3.5 py-2.5 rounded-xl bg-[#FAF7FC] border border-[#BC9FE6]/35">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#7A689C] block">
+                              E-mail de acesso
+                            </span>
+                            <p className="text-xs font-semibold text-[#2F1534] truncate mt-0.5 select-all">
+                              {clientAccessEmail}
+                            </p>
+                          </div>
+
+                          <div className="px-3.5 py-2.5 rounded-xl bg-[#FDF2F6] border border-[#EC97B7]/45 flex items-center justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-[#EC2B82] block">
+                                PIN do cliente (4 a 6 dígitos)
+                              </span>
+                              {editingPin ? (
+                                <div className="flex items-center gap-1.5 mt-1">
+                                  <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    maxLength={6}
+                                    value={pinDraft}
+                                    onChange={(e) => setPinDraft(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                    placeholder="Ex: 482915"
+                                    className="w-28 px-2 py-1 rounded-lg border border-[#EC2B82]/40 bg-white text-xs font-mono font-bold tracking-widest text-[#2F1534] focus:outline-none focus:border-[#EC2B82]"
+                                  />
+                                  <button
+                                    type="button"
+                                    disabled={savingPin}
+                                    onClick={() => handleSaveCustomPin(activeClient)}
+                                    className="px-2.5 py-1 rounded-lg bg-[#2F1534] text-white text-[11px] font-semibold disabled:opacity-50"
+                                  >
+                                    {savingPin ? '...' : 'Salvar'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingPin(false);
+                                      setPinError('');
+                                    }}
+                                    className="px-2 py-1 rounded-lg bg-white border border-black/10 text-[11px] text-[#232122]/70"
+                                  >
+                                    Cancelar
+                                  </button>
+                                </div>
+                              ) : (
+                                <p className="text-lg font-mono font-extrabold tracking-[0.22em] text-[#2F1534] leading-tight mt-0.5 select-all">
+                                  {clientPin}
+                                </p>
+                              )}
+                            </div>
+
+                            {canManage && !editingPin && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPinDraft(activeClient.portal_pin || '');
+                                  setPinError('');
+                                  setEditingPin(true);
+                                }}
+                                title="Personalizar PIN (4 a 6 números)"
+                                className="px-2.5 py-1.5 rounded-lg bg-white/90 hover:bg-white border border-[#EC97B7]/45 text-[11px] font-semibold text-[#2F1534] inline-flex items-center gap-1 shrink-0"
+                              >
+                                <Edit3 className="w-3 h-3 text-[#EC2B82]" />
+                                <span>Editar</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {pinError && (
+                          <p className="text-[11px] font-medium text-[#A9195A]">{pinError}</p>
+                        )}
+
+                        {/* Portal Link */}
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                          <input
+                            type="text"
+                            readOnly
+                            value={portalUrl}
+                            className="flex-1 px-3 py-2 rounded-xl border border-black/10 bg-[#FAF7FC] text-[11px] font-mono text-[#2F1534]/85 select-all"
+                          />
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const ok = await copyTextSafe(accessText);
+                              if (ok) {
+                                setCopiedAccessData(true);
+                                setTimeout(() => setCopiedAccessData(false), 2400);
+                              }
+                            }}
+                            className="px-3.5 py-2 rounded-xl bg-[#2F1534] hover:bg-[#EC2B82] text-white text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-colors shrink-0"
+                          >
+                            {copiedAccessData ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                            <span>{copiedAccessData ? 'Dados copiados!' : 'Copiar Link + PIN'}</span>
+                          </button>
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <a
+                              href={whatsappHref}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3 py-1.5 rounded-xl bg-[#F4F5E2] hover:bg-[#E7E9C4] border border-[#C8C978] text-[#3E4113] text-xs font-semibold inline-flex items-center gap-1.5 transition-colors"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5" />
+                              <span>Enviar por WhatsApp</span>
+                            </a>
+                            <a
+                              href={mailtoHref}
+                              className="px-3 py-1.5 rounded-xl bg-[#FDF2F6] hover:bg-[#FADCE9] border border-[#F4C2D8] text-[#EC2B82] text-xs font-semibold inline-flex items-center gap-1.5 transition-colors"
+                            >
+                              <Mail className="w-3.5 h-3.5" />
+                              <span>Enviar por E-mail</span>
+                            </a>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const ok = await copyTextSafe(portalUrl);
+                                if (ok) {
+                                  setCopiedPortalLink(true);
+                                  setTimeout(() => setCopiedPortalLink(false), 2000);
+                                }
+                              }}
+                              className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-[#FAF7FC] border border-black/10 text-[11px] font-semibold text-[#7A689C] inline-flex items-center gap-1"
+                            >
+                              {copiedPortalLink ? <Check className="w-3 h-3 text-[#6F731D]" /> : <Link2 className="w-3 h-3" />}
+                              <span>{copiedPortalLink ? 'Link copiado' : 'Copiar só link'}</span>
+                            </button>
+                          </div>
+
+                          {canManage && (
+                            <button
+                              type="button"
+                              disabled={regeneratingPin}
+                              onClick={() => handleRegenerateClientPin(activeClient)}
+                              title="Invalida o PIN anterior e gera um novo PIN de 6 dígitos"
+                              className="px-2.5 py-1.5 rounded-xl text-[11px] font-semibold text-[#7A689C] hover:text-[#EC2B82] hover:bg-[#FAF4FA] inline-flex items-center gap-1 disabled:opacity-50"
+                            >
+                              <RefreshCw className={`w-3 h-3 ${regeneratingPin ? 'animate-spin' : ''}`} />
+                              <span>{regeneratingPin ? 'Gerando...' : 'Gerar novo PIN'}</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Linked Boards (with per-board client sharing toggle) */}

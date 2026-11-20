@@ -1,7 +1,31 @@
 const TOKEN_KEY = 'aumi_studio_session_token';
+const CLIENT_LINK_TOKEN_KEY = 'aumi_client_portal_link_token';
+
+export function getClientPortalToken(): string | null {
+  try {
+    return sessionStorage.getItem(CLIENT_LINK_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setClientPortalToken(token: string | null) {
+  try {
+    if (token) {
+      sessionStorage.setItem(CLIENT_LINK_TOKEN_KEY, token);
+    } else {
+      sessionStorage.removeItem(CLIENT_LINK_TOKEN_KEY);
+    }
+  } catch {
+    // ignore
+  }
+}
 
 export function getAuthToken(): string | null {
   try {
+    // Isolated client portal link token takes precedence inside that browser tab
+    const clientLinkToken = sessionStorage.getItem(CLIENT_LINK_TOKEN_KEY);
+    if (clientLinkToken) return clientLinkToken;
     return sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
   } catch {
     return null;
@@ -11,15 +35,56 @@ export function getAuthToken(): string | null {
 export function setAuthToken(token: string | null) {
   try {
     if (token) {
+      sessionStorage.removeItem(CLIENT_LINK_TOKEN_KEY);
       sessionStorage.setItem(TOKEN_KEY, token);
       localStorage.setItem(TOKEN_KEY, token);
     } else {
+      sessionStorage.removeItem(CLIENT_LINK_TOKEN_KEY);
       sessionStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(TOKEN_KEY);
     }
   } catch {
     // ignore
   }
+}
+
+export function getPublicPortalBaseUrl(): string {
+  if (typeof window === 'undefined') return '';
+  const origin = window.location.origin;
+  // Convert private AI Studio dev preview origin (ais-dev-*) to the shareable origin (ais-pre-*)
+  if (origin.includes('://ais-dev-')) {
+    return origin.replace('://ais-dev-', '://ais-pre-');
+  }
+  return origin;
+}
+
+export function buildClientPinLoginUrl(email?: string | null): string {
+  const base = getPublicPortalBaseUrl();
+  if (!base) return '';
+  const cleanEmail = (email || '').trim().toLowerCase();
+  return cleanEmail
+    ? `${base}/?cliente=1&email=${encodeURIComponent(cleanEmail)}`
+    : `${base}/?cliente=1`;
+}
+
+export function buildClientPortalUrl(portalToken?: string | null): string {
+  const base = getPublicPortalBaseUrl();
+  if (!portalToken || !base) return '';
+  return `${base}/?portal=${encodeURIComponent(portalToken)}`;
+}
+
+export function buildWhatsAppShareUrl(phone: string | undefined | null, message: string): string {
+  const digits = (phone || '').replace(/\D/g, '');
+  const normalizedPhone = digits.length >= 10 && digits.length <= 11 ? `55${digits}` : digits;
+  const encoded = encodeURIComponent(message);
+  return normalizedPhone
+    ? `https://wa.me/${normalizedPhone}?text=${encoded}`
+    : `https://api.whatsapp.com/send?text=${encoded}`;
+}
+
+export function buildMailtoShareUrl(email: string | undefined | null, subject: string, body: string): string {
+  const cleanEmail = (email || '').trim();
+  return `mailto:${encodeURIComponent(cleanEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
 export async function api<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {

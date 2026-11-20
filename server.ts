@@ -11,6 +11,7 @@ import servicesRoutes from './server/routes/services.ts';
 import clientsAndBoardsRoutes from './server/routes/clientsAndBoards.ts';
 import financeAndSocietyRoutes from './server/routes/financeAndSociety.ts';
 import copiesRoutes from './server/routes/copies.ts';
+import contentsRoutes from './server/routes/contents.ts';
 
 async function startServer() {
   initDatabase();
@@ -27,6 +28,7 @@ async function startServer() {
   app.use('/api/auth', authRoutes);
   app.use('/api/services', servicesRoutes);
   app.use('/api/copies', copiesRoutes);
+  app.use('/api', contentsRoutes);
   app.use('/api', studioRoutes);
   app.use('/api', clientsAndBoardsRoutes);
   app.use('/api', financeAndSocietyRoutes);
