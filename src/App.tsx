@@ -299,6 +299,7 @@ export default function App() {
             user={user}
             onNavigate={handleNavigate}
             onOpenCopyComposer={openQuickCopyComposer}
+            onUserUpdated={(updated) => setUser(updated)}
           />
         )}
 

@@ -11,6 +11,40 @@ export interface PartnerPermissions {
   can_edit_other_portal: boolean;
 }
 
+export type HomeWidgetId =
+  | 'welcome'
+  | 'clock'
+  | 'shortcuts'
+  | 'kpis'
+  | 'communication'
+  | 'calendar'
+  | 'partners'
+  | 'finance'
+  | 'activities';
+
+export type WidgetDensity = 'compacto' | 'padrao' | 'expandido';
+export type WidgetSurfaceStyle = 'solid' | 'gradient' | 'liquid';
+export type WidgetColSpan = 3 | 4 | 5 | 6 | 7 | 8 | 9 | 12;
+
+export interface HomeWidgetConfig {
+  id: HomeWidgetId;
+  visible: boolean;
+  colSpan: WidgetColSpan;
+  density: WidgetDensity;
+  surface: WidgetSurfaceStyle;
+  primaryColor: string;
+  secondaryColor: string;
+  accentBar: boolean;
+  accentBarColor: string;
+  useDefaultStyle?: boolean;
+}
+
+export interface HomeLayoutConfig {
+  version: number;
+  widgets: HomeWidgetConfig[];
+  autoSave?: boolean;
+}
+
 export interface UserPreferences {
   accent_color: string;
   compact_sidebar: boolean;
@@ -22,6 +56,7 @@ export interface UserPreferences {
   sound_enabled?: boolean;
   sound_confirm_enabled?: boolean;
   sound_notification_enabled?: boolean;
+  home_layout?: HomeLayoutConfig;
 }
 
 export interface User {

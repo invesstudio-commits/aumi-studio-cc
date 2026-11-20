@@ -821,13 +821,16 @@ function runSafeMigrations() {
       VALUES (?, ?, ?, ?, ?, '[]', ?, ?)
     `);
     for (const p of partners) {
-      const defaultBg = p.partner_key === 'ingrid' ? '#FDEBF3' : '#F3EBFC';
+      const defaultBg = p.partner_key === 'ingrid' ? '#FFFFFF' : '#F1E8FC';
       const defaultHtml =
         p.partner_key === 'ingrid'
           ? '<p><strong>Prioridades da semana</strong></p><ul><li>Revisar aprovações pendentes no Portal do Cliente</li><li>Alinhar entregas e calendário de publicações</li></ul>'
           : '<p><strong>Anotações &amp; ideias</strong></p><ul><li>Conferir atualizações dos projetos ativos</li><li>Anotar recados rápidos e referências visuais</li></ul>';
       insertPostIt.run(p.partner_key, p.id, p.name, defaultBg, defaultHtml, p.name, nowIso);
     }
+    db.prepare(
+      "UPDATE studio_postits SET bg_color = '#FFFFFF' WHERE owner_key = 'ingrid' AND LOWER(bg_color) IN ('#fdebf3', '#fcf6ec')"
+    ).run();
   } catch (err) {
     console.error('Post-its seed migration warning:', err);
   }

@@ -37,6 +37,7 @@ export async function api<T = unknown>(path: string, options: RequestInit = {}):
   }
 
   const res = await fetch(`/api${path}`, {
+    cache: 'no-store',
     ...options,
     headers,
     credentials: 'include',

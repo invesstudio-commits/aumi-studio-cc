@@ -182,7 +182,7 @@ function getEnrichedNotificationsForUser(userId: string, limit = 60) {
     if (typeStr.includes('partner_chat')) {
       originLabel = 'Chat Interno · Sócias';
     } else if (typeStr.includes('postit')) {
-      originLabel = 'Post-its Compartilhados';
+      originLabel = 'Post-it · Painel Inicial';
     } else if (typeStr.includes('studio_demand')) {
       originLabel = 'Demandas · Sócias';
     } else if (category === 'portal') {
@@ -600,6 +600,7 @@ router.get('/dashboard', requireAuth, requirePartner, (req: AuthRequest, res) =>
     unread_notifications: unreadNotifications,
     partner_boards_summary: partnerBoardsSummary,
     partner_status: partnerStatus,
+    studio_postits: getFormattedPostIts(),
   });
 });
 
@@ -1335,10 +1336,43 @@ router.delete('/studio-chat/:id', requireAuth, requirePartner, (req: AuthRequest
   res.json({ ok: true });
 });
 
-// ==================== SHARED PARTNER POST-ITS (INGRID & MARIANA) ====================
-const lastPostItNotifyByPartner = new Map<string, number>();
+// ==================== FLOATING INDEPENDENT POST-ITS (PAINEL INICIAL) ====================
+function getPostItDisplayLabel(ownerKey: 'ingrid' | 'mariana', bgColor: string): string {
+  const colorLower = bgColor.toLowerCase();
+  const colorName =
+    colorLower === '#ffffff' || colorLower === '#fffefc'
+      ? 'Branco'
+      : colorLower === '#fce6f0' || colorLower === '#fdebf3'
+      ? 'Rosa'
+      : colorLower === '#f1e8fc' || colorLower === '#f3ebfc' || colorLower === '#efe6fb'
+      ? 'Lilás'
+      : colorLower === '#f4f5d8' || colorLower === '#f1f6e4'
+      ? 'Verde'
+      : colorLower === '#fcf5e3' || colorLower === '#fcf6ec'
+      ? 'Creme'
+      : colorLower === '#fcece3' || colorLower === '#fdf0e6'
+      ? 'Pêssego'
+      : '';
+  const slotNum = ownerKey === 'ingrid' ? '1' : '2';
+  return colorName ? `Post-it ${slotNum} (${colorName})` : `Post-it ${slotNum}`;
+}
+
+function formatBRDateTime(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'America/Sao_Paulo',
+    }).format(new Date(iso));
+  } catch {
+    return iso.slice(0, 16).replace('T', ' ');
+  }
+}
 
 router.get('/studio-postits', requireAuth, requirePartner, (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.json({ postits: getFormattedPostIts() });
 });
 
@@ -1347,10 +1381,6 @@ router.put('/studio-postits/:ownerKey', requireAuth, requirePartner, (req: AuthR
   const ownerKey = req.params.ownerKey;
   if (ownerKey !== 'ingrid' && ownerKey !== 'mariana') {
     res.status(400).json({ error: 'Post-it inválido.' });
-    return;
-  }
-  if (user.partner_key !== ownerKey) {
-    res.status(403).json({ error: 'Cada integrante pode editar apenas o seu próprio post-it.' });
     return;
   }
 
@@ -1364,15 +1394,26 @@ router.put('/studio-postits/:ownerKey', requireAuth, requirePartner, (req: AuthR
     .prepare('SELECT * FROM studio_postits WHERE owner_key = ?')
     .get(ownerKey) as Record<string, unknown> | undefined;
 
-  const allowedColors = ['#FCF6EC', '#FDEBF3', '#F3EBFC', '#FDF0E6', '#F1F6E4', '#FEF7D6'];
-  const nextBg =
-    typeof body.bg_color === 'string' && allowedColors.includes(body.bg_color)
-      ? body.bg_color
-      : String(existing?.bg_color || '#FCF6EC');
+  const defaultBg = ownerKey === 'ingrid' ? '#FFFFFF' : '#F1E8FC';
+  const rawBg = typeof body.bg_color === 'string' ? body.bg_color.trim() : '';
+  const nextBg = /^#[0-9a-fA-F]{6}$/.test(rawBg)
+    ? rawBg
+    : String(existing?.bg_color || defaultBg);
+
+  const prevPlain = String(existing?.text_html || '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
   const nextHtml =
     typeof body.text_html === 'string'
       ? body.text_html.slice(0, 24000)
       : String(existing?.text_html || '');
+  const nextPlain = nextHtml
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
   const nextStrokes = Array.isArray(body.strokes)
     ? JSON.stringify(body.strokes.slice(0, 600))
     : String(existing?.strokes_json || '[]');
@@ -1388,7 +1429,16 @@ router.put('/studio-postits/:ownerKey', requireAuth, requirePartner, (req: AuthR
     db.prepare(`
       INSERT INTO studio_postits (owner_key, owner_user_id, owner_name, bg_color, text_html, strokes_json, updated_by, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(ownerKey, user.id, user.name, nextBg, nextHtml, nextStrokes, user.name, now);
+    `).run(
+      ownerKey,
+      user.id,
+      ownerKey === 'ingrid' ? 'Post-it 1' : 'Post-it 2',
+      nextBg,
+      nextHtml,
+      nextStrokes,
+      user.name,
+      now
+    );
   }
 
   broadcastRealtime({
@@ -1397,19 +1447,25 @@ router.put('/studio-postits/:ownerKey', requireAuth, requirePartner, (req: AuthR
     scope: ownerKey,
   });
 
-  // Notify partner at most once every 10 minutes so autosave stays pleasant
-  const lastNotif = lastPostItNotifyByPartner.get(ownerKey) || 0;
-  if (Date.now() - lastNotif > 10 * 60 * 1000) {
-    lastPostItNotifyByPartner.set(ownerKey, Date.now());
-    const otherPartners = db
-      .prepare("SELECT id FROM users WHERE role = 'partner' AND id != ?")
-      .all(user.id) as Array<{ id: string }>;
-    const plain = nextHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  // Always notify Central de Notificações on create or update (without storing the full note body)
+  const hadContentBefore = prevPlain.length > 0;
+  const hasContentNow = nextPlain.length > 0;
+  const colorChanged = Boolean(existing && String(existing.bg_color || '') !== nextBg);
+  if (hasContentNow || colorChanged) {
+    const isNewNote = !hadContentBefore && hasContentNow;
+    const label = getPostItDisplayLabel(ownerKey, nextBg);
+    const stamp = formatBRDateTime(now);
+    const activePartners = db
+      .prepare("SELECT id FROM users WHERE role = 'partner' AND active = 1")
+      .all() as Array<{ id: string }>;
+
     notifyUsers(
-      otherPartners.map((p) => p.id),
-      'postit_updated',
-      `${user.name} atualizou seu post-it`,
-      plain ? plain.slice(0, 120) : 'Novo recado ou desenho salvo no mural compartilhado.',
+      activePartners.map((p) => p.id),
+      isNewNote ? 'postit_created' : 'postit_updated',
+      isNewNote ? `Nova anotação no ${label}` : `Atualização no ${label}`,
+      isNewNote
+        ? `${user.name} adicionou uma nova anotação no ${label} em ${stamp}. Clique para abrir e editar.`
+        : `${user.name} atualizou o ${label} em ${stamp}. Clique para abrir e editar.`,
       'inicio',
       `postit-${ownerKey}`
     );
@@ -1418,6 +1474,38 @@ router.put('/studio-postits/:ownerKey', requireAuth, requirePartner, (req: AuthR
   const all = getFormattedPostIts();
   const updated = all.find((p) => p.owner_key === ownerKey);
   res.json({ postit: updated });
+});
+
+router.delete('/studio-postits/:ownerKey', requireAuth, requirePartner, (req: AuthRequest, res) => {
+  const user = req.user!;
+  const ownerKey = req.params.ownerKey;
+  if (ownerKey !== 'ingrid' && ownerKey !== 'mariana') {
+    res.status(400).json({ error: 'Post-it inválido.' });
+    return;
+  }
+
+  const existing = db
+    .prepare('SELECT * FROM studio_postits WHERE owner_key = ?')
+    .get(ownerKey) as Record<string, unknown> | undefined;
+  const now = new Date().toISOString();
+
+  if (existing) {
+    db.prepare(`
+      UPDATE studio_postits
+      SET text_html = '', strokes_json = '[]', updated_by = ?, updated_at = ?
+      WHERE owner_key = ?
+    `).run(user.name, now, ownerKey);
+  }
+
+  broadcastRealtime({
+    type: 'postit_updated',
+    actorId: user.id,
+    scope: ownerKey,
+  });
+
+  const all = getFormattedPostIts();
+  const updated = all.find((p) => p.owner_key === ownerKey);
+  res.json({ ok: true, postit: updated });
 });
 
 router.get('/studio-demands', requireAuth, requirePartner, (_req, res) => {
